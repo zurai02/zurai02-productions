@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zurai02 Productions</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a1a;color:#c8c8e0;min-height:100vh}
+.glow{background:linear-gradient(90deg,#6b8cff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+header{padding:20px 40px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1a1a3e}
+.logo{font-size:26px;font-weight:800}.logo small{display:block;font-size:13px;font-weight:400;color:#6666aa;-webkit-text-fill-color:#6666aa}
+.nav{display:flex;gap:25px}.nav a{color:#8888bb;text-decoration:none;font-size:14px;transition:.3s}.nav a:hover{color:#6b8cff}
+.container{max-width:1200px;margin:0 auto;padding:40px 20px}
+.hero{text-align:center;padding:50px 20px;background:#11112a;border-radius:16px;margin-bottom:30px;border:1px solid #1a1a3e}
+.hero h1{font-size:42px;margin-bottom:12px}.hero p{color:#7777aa;margin-bottom:25px}
+.btn{display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#6b8cff,#a855f7);color:#fff;text-decoration:none;border-radius:10px;font-weight:600;border:none;cursor:pointer;transition:.2s}.btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(107,140,255,.3)}
+.btn-ghost{background:transparent;border:2px solid #6b8cff;color:#6b8cff;margin-left:12px}.btn-ghost:hover{background:rgba(107,140,255,.1)}
+.auth{background:#11112a;border:1px solid #1a1a3e;border-radius:14px;padding:25px;text-align:center;margin-bottom:30px}
+.rbx-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 25px;background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:.2s}.rbx-btn:hover{transform:translateY(-2px)}
+.user-info{display:none;align-items:center;gap:15px;justify-content:center}
+.avatar{width:45px;height:45px;border-radius:50%;background:linear-gradient(135deg,#6b8cff,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:30px}
+.stat{background:#11112a;border:1px solid #1a1a3e;border-radius:14px;padding:20px;text-align:center;transition:.3s}.stat:hover{border-color:#33335a;transform:translateY(-3px)}
+.stat .num{font-size:32px;font-weight:800;background:linear-gradient(90deg,#6b8cff,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat .lbl{color:#6666aa;font-size:13px;margin-top:5px}
+.section-title{font-size:22px;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.section-title::before{content:'';width:4px;height:24px;background:linear-gradient(180deg,#6b8cff,#a855f7);border-radius:2px}
+.scripts{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:15px}
+.card{background:#11112a;border:1px solid #1a1a3e;border-radius:14px;padding:20px;transition:.3s}.card:hover{border-color:#33335a}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.card-name{font-size:18px;font-weight:700}.card-lang{background:rgba(107,140,255,.15);color:#6b8cff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.card-desc{color:#6666aa;font-size:13px;margin-bottom:12px;line-height:1.5}
+.card-meta{display:flex;gap:15px;font-size:12px;color:#555588;margin-bottom:12px}
+.card-actions{display:flex;gap:8px}
+.card-actions button{flex:1;padding:8px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:12px;transition:.2s}
+.run{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff}.run:hover{box-shadow:0 5px 15px rgba(34,197,94,.3)}
+.edit{background:rgba(107,140,255,.1);color:#6b8cff;border:1px solid rgba(107,140,255,.3)}.edit:hover{background:rgba(107,140,255,.2)}
+.del{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.3)}.del:hover{background:rgba(239,68,68,.2)}
+.output{margin-top:12px;padding:12px;background:#0a0a1a;border-radius:10px;font-family:'Consolas','Monaco',monospace;font-size:12px;color:#6b8cff;max-height:150px;overflow:auto;white-space:pre-wrap;border:1px solid #1a1a3e;display:none}
+.output.active{display:block}
+.output::before{content:'Output';display:block;color:#444466;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;border-bottom:1px solid #1a1a3e;padding-bottom:4px}
+.empty{text-align:center;padding:50px;color:#444466;display:none}.empty .icon{font-size:50px;margin-bottom:15px}
+.contact{background:#11112a;border:1px solid #1a1a3e;border-radius:14px;padding:35px;text-align:center}
+.contact h2{margin-bottom:10px}.contact p{color:#6666aa;margin-bottom:20px}
+.email{display:inline-flex;align-items:center;gap:8px;padding:12px 25px;background:rgba(107,140,255,.1);border:2px solid rgba(107,140,255,.3);border-radius:10px;color:#6b8cff;text-decoration:none;font-weight:600;transition:.2s}.email:hover{background:rgba(107,140,255,.2);border-color:#6b8cff}
+footer{text-align:center;padding:25px;color:#333355;font-size:13px;border-top:1px solid #1a1a3e;margin-top:30px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;justify-content:center;align-items:center;padding:20px}
+.modal.active{display:flex}
+.modal-box{background:#11112a;border:1px solid #33335a;border-radius:16px;width:100%;max-width:700px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column}
+.modal-head{padding:18px 22px;border-bottom:1px solid #1a1a3e;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;color:#6666aa;font-size:22px;cursor:pointer}.modal-close:hover{color:#fff}
+.modal-body{padding:22px;overflow-y:auto}
+.form{margin-bottom:15px}.form label{display:block;margin-bottom:6px;font-size:13px;color:#8888bb}
+.form input,.form textarea,.form select{width:100%;padding:10px 14px;background:#0a0a1a;border:1px solid #222244;border-radius:10px;color:#c8c8e0;font-size:14px;transition:.2s}
+.form input:focus,.form textarea:focus,.form select:focus{outline:none;border-color:#6b8cff}
+.form textarea{min-height:250px;font-family:'Consolas','Monaco',monospace;font-size:12px;line-height:1.6;resize:vertical}
+.modal-foot{padding:18px 22px;border-top:1px solid #1a1a3e;display:flex;justify-content:flex-end;gap:10px}
+.toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:#11112a;border:1px solid #33335a;border-radius:12px;padding:12px 18px;min-width:280px;display:flex;align-items:center;gap:10px;animation:slide .3s ease;border-left:4px solid #6b8cff}
+.toast.ok{border-left-color:#22c55e}.toast.err{border-left-color:#ef4444}
+@keyframes slide{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.protect{display:none;position:fixed;top:0;left:0;width:100%;background:linear-gradient(90deg,#ef4444,#dc2626);color:#fff;text-align:center;padding:14px;z-index:9999;font-weight:700;animation:down .4s ease}
+@keyframes down{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+@media(max-width:768px){.hero h1{font-size:28px}.scripts{grid-template-columns:1fr}header{flex-direction:column;gap:15px}}
+</style>
+<base target="_blank">
+</head>
+<body>
+<div class="protect" id="protect">⚠️ This script is protected by Zurai02 Productions — Execution blocked from browser</div>
+<header>
+<div class="logo glow">ZURAI02 PRODUCTIONS<small>Roblox Script Hub & Execution Monitor</small></div>
+<nav class="nav"><a href="#dash">Dashboard</a><a href="#scripts">Scripts</a><a href="#contact">Contact</a></nav>
+</header>
+<div class="container">
+<section class="hero" id="dash">
+<h1>Secure Roblox Script Management</h1>
+<p>Save, monitor, and protect your scripts with real-time execution tracking.</p>
+<button class="btn" onclick="openModal()">+ New Script</button>
+<a href="#contact" class="btn btn-ghost">Contact</a>
+</section>
+<section class="auth" id="auth">
+<div id="authLogin">
+<h3 style="margin-bottom:8px">🔐 Sign in with Roblox</h3>
+<p style="color:#6666aa;margin-bottom:18px;font-size:14px">Authenticate to access your script vault and analytics.</p>
+<button class="rbx-btn" onclick="signIn()">🎮 Sign in with Roblox</button>
+</div>
+<div class="user-info" id="userInfo">
+<div class="avatar" id="avatar">Z</div>
+<div><div style="font-weight:700" id="uName">Zurai02</div><div style="font-size:12px;color:#6666aa" id="uId">ID: 3255755288279625071</div></div>
+<button class="btn btn-ghost" onclick="signOut()" style="margin-left:auto;padding:8px 16px;font-size:13px">Sign Out</button>
+</div>
+</section>
+<section id="dash">
+<h2 class="section-title">Execution Monitor</h2>
+<div class="stats">
+<div class="stat"><div class="num" id="tExec">0</div><div class="lbl">Total Executions</div></div>
+<div class="stat"><div class="num" id="tScript">0</div><div class="lbl">Saved Scripts</div></div>
+<div class="stat"><div class="num" id="tBlock">0</div><div class="lbl">Blocked Attempts</div></div>
+<div class="stat"><div class="num" id="tLast">Never</div><div class="lbl">Last Execution</div></div>
+</div>
+</section>
+<section id="scripts">
+<h2 class="section-title">My Scripts</h2>
+<div class="scripts" id="scriptGrid"></div>
+<div class="empty" id="empty"><div class="icon">📂</div><h3>No scripts yet</h3><p>Create your first script to get started.</p></div>
+</section>
+<section class="contact" id="contact">
+<h2 class="glow">📧 Get in Touch</h2>
+<p>Need help or have a request? Reach out to us.</p>
+<a href="mailto:297417184+zurai02@users.noreply.github.com" class="email">✉️ 297417184+zurai02@users.noreply.github.com</a>
+</section>
+</div>
+<footer>© 2026 Zurai02 Productions. Protected by advanced browser detection.</footer>
+<div class="modal" id="modal">
+<div class="modal-box">
+<div class="modal-head"><h3>📝 New Script</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+<div class="modal-body">
+<div class="form"><label>Script Name</label><input type="text" id="sName" placeholder="AutoFarm v2"></div>
+<div class="form"><label>Description</label><input type="text" id="sDesc" placeholder="What does this script do?"></div>
+<div class="form"><label>Language</label><select id="sLang"><option value="lua">Lua</option><option value="luazi">Luazi (.lz)</option><option value="luau">Luau</option></select></div>
+<div class="form"><label>Source Code</label><textarea id="sCode" placeholder="-- Paste your script here..."></textarea></div>
+</div>
+<div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveScript()">Save Script</button></div>
+</div>
+</div>
+<div class="toasts" id="toasts"></div>
+<script src="lz-runtime.js"></script>
+<script src="app.js"></script>
+</body>
+  </html>
