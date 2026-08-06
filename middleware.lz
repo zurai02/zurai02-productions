@@ -1,0 +1,107 @@
+-- middleware.lz
+-- Zurai02 Productions - Authentication & Security Middleware
+-- Handles auth, security checks, and environment detection
+
+local Middleware = {}
+
+-- Client credentials (server-side only in production)
+Middleware.CLIENT_ID = "3255755288279625071"
+Middleware.CLIENT_SECRET = "RBX-cE3K03ijx0OmTf3zok1KFZ-qtmxpNX5ku8yJ9lG1nKQoLIyaMVnJv7VVeAx97QbH"
+
+-- Roblox OAuth endpoints
+Middleware.OAUTH_URL = "https://apis.roblox.com/oauth/v1/authorize"
+Middleware.TOKEN_URL = "https://apis.roblox.com/oauth/v1/token"
+
+-- Detect environment
+function Middleware.detectEnvironment()
+    local executorGlobals = {"syn", "krnl", "fluxus", "oxygen", "electron", "getexecutorname", "getscriptclosure", "getgc", "getconnections", "getloadedmodules", "hookfunction", "setreadonly", "getrawmetatable"}
+    for _, g in ipairs(executorGlobals) do
+        if _G[g] ~= nil or getfenv()[g] ~= nil then
+            return "executor"
+        end
+    end
+    if typeof(game) == "nil" and typeof(workspace) == "nil" then
+        return "browser"
+    end
+    return "unknown"
+end
+
+function Middleware.isBrowser()
+    if typeof(window) ~= "nil" and typeof(document) ~= "nil" then
+        return true
+    end
+    return false
+end
+
+function Middleware.getAuthUrl(redirectUri, state)
+    local params = {
+        client_id = Middleware.CLIENT_ID,
+        redirect_uri = redirectUri or "https://zurai02.is-a.dev/Zurai02-Development/",
+        scope = "openid profile",
+        response_type = "code",
+        state = state or tostring(math.random(100000, 999999))
+    }
+    local query = {}
+    for k, v in pairs(params) do
+        table.insert(query, k .. "=" .. v)
+    end
+    return Middleware.OAUTH_URL .. "?" .. table.concat(query, "&")
+end
+
+function Middleware.validateToken(token)
+    return token ~= nil and #token > 10
+end
+
+function Middleware.checkOrigin(origin)
+    local allowed = {
+        "https://zurai02.is-a.dev",
+        "https://zurai02.github.io",
+        "http://localhost",
+        "file://"
+    }
+    for _, a in ipairs(allowed) do
+        if origin and string.find(origin, a, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+function Middleware.signScriptUrl(scriptId, userId)
+    local payload = scriptId .. ":" .. userId .. ":" .. tostring(os.time())
+    local signature = "sig_" .. string.sub(payload, 1, 16) .. "_" .. tostring(math.random(1000, 9999))
+    return signature
+end
+
+function Middleware.checkRateLimit(userId)
+    return true
+end
+
+function Middleware.logEvent(event, details)
+    local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+    print(string.format("[Zurai02 Security] %s | %s | %s", timestamp, event, details or ""))
+end
+
+-- File type validation: .lz files are NOT allowed
+function Middleware.validateFileType(filename)
+    if string.match(filename, "%.lz$") or string.match(filename, "%.LZ$") then
+        return false, ".lz file format is not supported"
+    end
+    local allowed = {".lua", ".luau", ".txt", ".json"}
+    local ext = string.match(filename, "%.[^%.]+$")
+    if ext then
+        ext = string.lower(ext)
+        for _, a in ipairs(allowed) do
+            if ext == a then
+                return true, "Valid file type"
+            end
+        end
+    end
+    return true, "No extension check needed"
+end
+
+if typeof(window) ~= "nil" then
+    window.Zurai02Middleware = Middleware
+end
+
+return Middleware
