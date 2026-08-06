@@ -21,7 +21,7 @@ p.sub{color:#555588;font-size:16px;line-height:1.6;max-width:480px;margin:0 auto
 .card-desc{color:#555588;font-size:13px;margin-bottom:12px}
 .loadstring-box{background:#0a0a14;border:1.5px solid rgba(139,92,246,.2);border-radius:14px;padding:16px;margin-bottom:14px}
 .loadstring-box label{display:block;font-size:10px;color:#444466;margin-bottom:8px;text-transform:uppercase;letter-spacing:1.5px;font-weight:800}
-.loadstring-text{font-family:'JetBrains Mono',monospace;font-size:12px;color:#a78bfa;background:#07070f;padding:12px;border-radius:10px;word-break:break-all;border:1px solid rgba(255,255,255,.05);line-height:1.7}
+.loadstring-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:#a78bfa;background:#07070f;padding:12px;border-radius:10px;word-break:break-all;border:1px solid rgba(255,255,255,.05);line-height:1.7;white-space:pre-wrap}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;transition:.2s;box-shadow:0 4px 15px rgba(16,185,129,.2)}.btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(16,185,129,.3)}
 .btn-full{width:100%;justify-content:center}
 .steps{background:linear-gradient(135deg,#11112a,#0d0d1f);border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:32px;margin-top:32px}
@@ -77,23 +77,9 @@ p.sub{color:#555588;font-size:16px;line-height:1.6;max-width:480px;margin:0 auto
 <div id="toastContainer"></div>
 
 <script>
-function loadScripts() {
-    const container = document.getElementById('scriptsList');
-    const stored = localStorage.getItem('zp_scripts');
-    if (!stored) {
-        container.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No scripts saved yet</h3><p>Scripts will appear here once they are created from an executor.</p></div>';
-        return;
-    }
-    const scripts = JSON.parse(stored);
-    if (!scripts.length) {
-        container.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No scripts saved yet</h3><p>Scripts will appear here once they are created from an executor.</p></div>';
-        return;
-    }
-    const base = window.location.origin + '/';
-    container.innerHTML = scripts.map(s => {
-        const ls = 'loadstring(game:HttpGet("' + base + 'raw.html?script=' + s.id + '", true))()';
-        return '<div class="card"><div class="card-head"><div class="card-name">' + esc(s.name) + '</div><div class="card-lang">Lua</div></div><div class="card-desc">' + esc(s.desc) + '</div><div class="loadstring-box"><label>📋 Loadstring</label><div class="loadstring-text">' + esc(ls) + '</div></div><button class="btn btn-full" onclick="copyLs(this,'' + s.id + '')">📋 Copy Loadstring</button></div>';
-    }).join('');
+function genLs(code, name) {
+    return '-- Zurai02 Productions | ' + name + '
+loadstring([[' + code + ']])()';
 }
 
 function esc(t) {
@@ -102,9 +88,31 @@ function esc(t) {
     return d.innerHTML;
 }
 
+function loadScripts() {
+    const container = document.getElementById('scriptsList');
+    const stored = localStorage.getItem('zp_scripts');
+    if (!stored) {
+        container.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No scripts saved yet</h3><p>Scripts will appear here once they are created from the dashboard.</p></div>';
+        return;
+    }
+    const scripts = JSON.parse(stored);
+    if (!scripts.length) {
+        container.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No scripts saved yet</h3><p>Scripts will appear here once they are created from the dashboard.</p></div>';
+        return;
+    }
+    container.innerHTML = scripts.map(s => {
+        const ls = genLs(s.code, s.name);
+        return '<div class="card"><div class="card-head"><div class="card-name">' + esc(s.name) + '</div><div class="card-lang">Lua</div></div><div class="card-desc">' + esc(s.desc) + '</div><div class="loadstring-box"><label>📋 Loadstring</label><div class="loadstring-text">' + esc(ls) + '</div></div><button class="btn btn-full" onclick="copyLs(this,'' + s.id + '')">📋 Copy Loadstring</button></div>';
+    }).join('');
+}
+
 function copyLs(btn, id) {
-    const base = window.location.origin + '/';
-    const ls = 'loadstring(game:HttpGet("' + base + 'raw.html?script=' + id + '", true))()';
+    const stored = localStorage.getItem('zp_scripts');
+    if (!stored) return;
+    const scripts = JSON.parse(stored);
+    const s = scripts.find(x => x.id === id);
+    if (!s) return;
+    const ls = genLs(s.code, s.name);
     navigator.clipboard.writeText(ls).then(() => {
         showToast('✅ Copied! Paste in your executor.');
         btn.textContent = '✅ Copied!';
