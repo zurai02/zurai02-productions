@@ -10,7 +10,15 @@ function saveScript(){const n=document.getElementById('sName').value.trim(),d=do
 function delScript(id){if(!confirm('Delete this script?'))return;S.scripts=S.scripts.filter(s=>s.id!==id);save();render();updateStats();toast('Deleted','info');}
 function editScript(id){const s=S.scripts.find(x=>x.id===id);if(!s)return;document.getElementById('sName').value=s.name;document.getElementById('sDesc').value=s.desc;document.getElementById('sCode').value=s.code;S.scripts=S.scripts.filter(x=>x.id!==id);openModal();}
 
-function genLoadstring(code,name){return'-- Zurai02 Productions | '+name+'\nloadstring([['+code+']])()';}
+// Hex-encode the Lua code to hide it from reverse engineering
+function toHex(str){let h='';for(let i=0;i<str.length;i++){h+=str.charCodeAt(i).toString(16).padStart(2,'0');}return h;}
+
+function genLoadstring(code,name){
+const hex=toHex(code);
+return`-- Zurai02 Productions | ${name}
+local function _d(s)local r=''for i=1,#s,2 do r=r..string.char(tonumber(s:sub(i,i+1),16))end return r end
+loadstring(_d("${hex}"))()`;
+}
 
 function copyLoadstring(id){const s=S.scripts.find(x=>x.id===id);if(!s)return;navigator.clipboard.writeText(s.ls).then(()=>toast('Loadstring copied! Paste in executor.','ok')).catch(()=>{const ta=document.createElement('textarea');ta.value=s.ls;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Loadstring copied! Paste in executor.','ok');});}
 
