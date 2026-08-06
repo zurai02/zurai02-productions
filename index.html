@@ -18,10 +18,6 @@ header{padding:20px 40px;display:flex;justify-content:space-between;align-items:
 .btn-ghost{background:transparent;border:2px solid #6b8cff;color:#6b8cff;margin-left:12px}.btn-ghost:hover{background:rgba(107,140,255,.1)}
 .btn-copy{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;padding:10px 20px;font-size:13px}
 .btn-copy:hover{box-shadow:0 5px 15px rgba(34,197,94,.3)}
-.auth{background:#11112a;border:1px solid #1a1a3e;border-radius:14px;padding:25px;text-align:center;margin-bottom:30px}
-.rbx-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 25px;background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:.2s}.rbx-btn:hover{transform:translateY(-2px)}
-.user-info{display:none;align-items:center;gap:15px;justify-content:center}
-.avatar{width:45px;height:45px;border-radius:50%;background:linear-gradient(135deg,#6b8cff,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:700}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:30px}
 .stat{background:#11112a;border:1px solid #1a1a3e;border-radius:14px;padding:20px;text-align:center;transition:.3s}.stat:hover{border-color:#33335a;transform:translateY(-3px)}
 .stat .num{font-size:32px;font-weight:800;background:linear-gradient(90deg,#6b8cff,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -58,8 +54,8 @@ footer{text-align:center;padding:25px;color:#333355;font-size:13px;border-top:1p
 .modal-close{background:none;border:none;color:#6666aa;font-size:22px;cursor:pointer}.modal-close:hover{color:#fff}
 .modal-body{padding:22px;overflow-y:auto}
 .form{margin-bottom:15px}.form label{display:block;margin-bottom:6px;font-size:13px;color:#8888bb}
-.form input,.form textarea,.form select{width:100%;padding:10px 14px;background:#0a0a1a;border:1px solid #222244;border-radius:10px;color:#c8c8e0;font-size:14px;transition:.2s}
-.form input:focus,.form textarea:focus,.form select:focus{outline:none;border-color:#6b8cff}
+.form input,.form textarea{width:100%;padding:10px 14px;background:#0a0a1a;border:1px solid #222244;border-radius:10px;color:#c8c8e0;font-size:14px;transition:.2s}
+.form input:focus,.form textarea:focus{outline:none;border-color:#6b8cff}
 .form textarea{min-height:250px;font-family:'Consolas','Monaco',monospace;font-size:12px;line-height:1.6;resize:vertical}
 .modal-foot{padding:18px 22px;border-top:1px solid #1a1a3e;display:flex;justify-content:flex-end;gap:10px}
 .toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
@@ -72,10 +68,8 @@ footer{text-align:center;padding:25px;color:#333355;font-size:13px;border-top:1p
 .browser-block.active{display:block}
 .browser-block h3{color:#ef4444;margin-bottom:10px;font-size:18px}
 .browser-block p{color:#aa6666;font-size:14px;margin-bottom:15px}
-.login-form{display:none;max-width:400px;margin:0 auto;text-align:left}
-.login-form.active{display:block}
-.login-form .form{margin-bottom:15px}
-.login-form input{width:100%}
+.login-soon{text-align:center;padding:20px;background:#11112a;border:1px solid #1a1a3e;border-radius:14px;margin-bottom:30px}
+.login-soon h3{color:#6b8cff;margin-bottom:8px}.login-soon p{color:#6666aa;font-size:14px}
 @media(max-width:768px){.hero h1{font-size:28px}.scripts{grid-template-columns:1fr}header{flex-direction:column;gap:15px}}
 </style>
 <base target="_blank">
@@ -89,25 +83,13 @@ footer{text-align:center;padding:25px;color:#333355;font-size:13px;border-top:1p
 <div class="container">
 <section class="hero" id="dash">
 <h1>Secure Roblox Script Management</h1>
-<p>Save, monitor, and protect your Luau & Lua scripts with real-time execution tracking.</p>
+<p>Save, monitor, and protect your Lua scripts with real-time execution tracking.</p>
 <button class="btn" onclick="openModal()">+ New Script</button>
 <a href="#contact" class="btn btn-ghost">Contact</a>
 </section>
-<section class="auth" id="auth">
-<div id="authLogin">
-<h3 style="margin-bottom:8px">🔐 Sign in with Roblox</h3>
-<p style="color:#6666aa;margin-bottom:18px;font-size:14px">Enter your Roblox credentials to access your script vault.</p>
-<div class="login-form active" id="loginForm">
-<div class="form"><label>Roblox Username</label><input type="text" id="rbxUser" placeholder="Your Roblox username"></div>
-<div class="form"><label>Roblox User ID</label><input type="text" id="rbxId" placeholder="Your Roblox User ID"></div>
-<button class="rbx-btn" onclick="signIn()" style="width:100%;justify-content:center">🎮 Sign in with Roblox</button>
-</div>
-</div>
-<div class="user-info" id="userInfo">
-<div class="avatar" id="avatar">?</div>
-<div><div style="font-weight:700" id="uName">Guest</div><div style="font-size:12px;color:#6666aa" id="uId">Not signed in</div></div>
-<button class="btn btn-ghost" onclick="signOut()" style="margin-left:auto;padding:8px 16px;font-size:13px">Sign Out</button>
-</div>
+<section class="login-soon">
+<h3>🔐 Roblox Login — Coming Soon</h3>
+<p>Sign-in with Roblox is temporarily disabled while we configure OAuth settings.</p>
 </section>
 <section id="dash">
 <h2 class="section-title">Execution Monitor</h2>
@@ -121,7 +103,7 @@ footer{text-align:center;padding:25px;color:#333355;font-size:13px;border-top:1p
 <section id="scripts">
 <h2 class="section-title">My Scripts</h2>
 <div class="scripts" id="scriptGrid"></div>
-<div class="empty" id="empty"><div class="icon">📂</div><h3>No scripts yet</h3><p>Sign in and create your first script to get started.</p></div>
+<div class="empty" id="empty"><div class="icon">📂</div><h3>No scripts yet</h3><p>Create your first script to get started.</p></div>
 </section>
 <section class="contact" id="contact">
 <h2 class="glow">📧 Get in Touch</h2>
@@ -136,8 +118,7 @@ footer{text-align:center;padding:25px;color:#333355;font-size:13px;border-top:1p
 <div class="modal-body">
 <div class="form"><label>Script Name</label><input type="text" id="sName" placeholder="AutoFarm v2"></div>
 <div class="form"><label>Description</label><input type="text" id="sDesc" placeholder="What does this script do?"></div>
-<div class="form"><label>Language</label><select id="sLang"><option value="lua">Lua (.lua)</option><option value="luau">Luau (.lz)</option></select></div>
-<div class="form"><label>Source Code</label><textarea id="sCode" placeholder="-- Paste your Luau or Lua script here..."></textarea></div>
+<div class="form"><label>Source Code</label><textarea id="sCode" placeholder="-- Paste your Lua script here..."></textarea></div>
 </div>
 <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveScript()">Save Script</button></div>
 </div>
@@ -145,4 +126,4 @@ footer{text-align:center;padding:25px;color:#333355;font-size:13px;border-top:1p
 <div class="toasts" id="toasts"></div>
 <script src="app.js"></script>
 </body>
-  </html>
+</html>
