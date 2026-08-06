@@ -77,58 +77,51 @@ p.sub{color:#555588;font-size:16px;line-height:1.6;max-width:480px;margin:0 auto
 <div id="toastContainer"></div>
 
 <script>
-function toHex(str) {
-    let h = '';
-    for (let i = 0; i < str.length; i++) {
-        h += str.charCodeAt(i).toString(16).padStart(2, '0');
-    }
-    return h;
-}
-
-function genLs(code, name) {
-    const hex = toHex(code);
+function genLs(id, name) {
+    var base = window.location.origin + '/';
     return '-- Zurai02 Productions | ' + name + '
-local function _d(s)local r=''for i=1,#s,2 do r=r..string.char(tonumber(s:sub(i,i+1),16))end return r end
-loadstring(_d("' + hex + '"))()';
+local _c=game:HttpGet("' + base + 'raw.html?script=' + id + '",true)
+local _s=_c:match("<!--LUA-->(.-)<!--/LUA-->")
+if _s then loadstring(_s)() else warn("Zurai02: Script not found") end';
 }
 
 function esc(t) {
-    const d = document.createElement('div');
+    var d = document.createElement('div');
     d.textContent = t;
     return d.innerHTML;
 }
 
 function loadScripts() {
-    const container = document.getElementById('scriptsList');
-    const stored = localStorage.getItem('zp_scripts');
+    var container = document.getElementById('scriptsList');
+    var stored = localStorage.getItem('zp_scripts');
     if (!stored) {
         container.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No scripts saved yet</h3><p>Scripts will appear here once they are created from the dashboard.</p></div>';
         return;
     }
-    const scripts = JSON.parse(stored);
+    var scripts = JSON.parse(stored);
     if (!scripts.length) {
         container.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No scripts saved yet</h3><p>Scripts will appear here once they are created from the dashboard.</p></div>';
         return;
     }
-    container.innerHTML = scripts.map(s => {
-        const ls = genLs(s.code, s.name);
+    container.innerHTML = scripts.map(function(s) {
+        var ls = genLs(s.id, s.name);
         return '<div class="card"><div class="card-head"><div class="card-name">' + esc(s.name) + '</div><div class="card-lang">Lua</div></div><div class="card-desc">' + esc(s.desc) + '</div><div class="loadstring-box"><label>📋 Loadstring</label><div class="loadstring-text">' + esc(ls) + '</div></div><button class="btn btn-full" onclick="copyLs(this,'' + s.id + '')">📋 Copy Loadstring</button></div>';
     }).join('');
 }
 
 function copyLs(btn, id) {
-    const stored = localStorage.getItem('zp_scripts');
+    var stored = localStorage.getItem('zp_scripts');
     if (!stored) return;
-    const scripts = JSON.parse(stored);
-    const s = scripts.find(x => x.id === id);
+    var scripts = JSON.parse(stored);
+    var s = scripts.find(function(x) { return x.id === id; });
     if (!s) return;
-    const ls = genLs(s.code, s.name);
-    navigator.clipboard.writeText(ls).then(() => {
+    var ls = genLs(s.id, s.name);
+    navigator.clipboard.writeText(ls).then(function() {
         showToast('✅ Copied! Paste in your executor.');
         btn.textContent = '✅ Copied!';
-        setTimeout(() => btn.textContent = '📋 Copy Loadstring', 2000);
-    }).catch(() => {
-        const ta = document.createElement('textarea');
+        setTimeout(function() { btn.textContent = '📋 Copy Loadstring'; }, 2000);
+    }).catch(function() {
+        var ta = document.createElement('textarea');
         ta.value = ls;
         document.body.appendChild(ta);
         ta.select();
@@ -136,17 +129,17 @@ function copyLs(btn, id) {
         document.body.removeChild(ta);
         showToast('✅ Copied! Paste in your executor.');
         btn.textContent = '✅ Copied!';
-        setTimeout(() => btn.textContent = '📋 Copy Loadstring', 2000);
+        setTimeout(function() { btn.textContent = '📋 Copy Loadstring'; }, 2000);
     });
 }
 
 function showToast(msg) {
-    const c = document.getElementById('toastContainer');
-    const t = document.createElement('div');
+    var c = document.getElementById('toastContainer');
+    var t = document.createElement('div');
     t.className = 'toast';
     t.textContent = msg;
     c.appendChild(t);
-    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3500);
+    setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 3500);
 }
 
 loadScripts();
