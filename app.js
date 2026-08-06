@@ -6,18 +6,16 @@ function initParticles(){const c=document.getElementById('particles');for(let i=
 
 function openModal(){document.getElementById('modal').classList.add('active');document.getElementById('sName').focus();}
 function closeModal(){document.getElementById('modal').classList.remove('active');['sName','sDesc','sCode'].forEach(x=>document.getElementById(x).value='');}
-function saveScript(){const n=document.getElementById('sName').value.trim(),d=document.getElementById('sDesc').value.trim(),c=document.getElementById('sCode').value.trim();if(!n||!c){toast('Name and code required!','err');return;}const id=Date.now().toString(36)+Math.random().toString(36).slice(2);S.scripts.push({id:id,name:n,desc:d||'No description',lang:'lua',code:c,execs:0,last:null,output:'',ls:genLoadstring(c,n)});save();render();updateStats();closeModal();toast('Script saved!','ok');}
+function saveScript(){const n=document.getElementById('sName').value.trim(),d=document.getElementById('sDesc').value.trim(),c=document.getElementById('sCode').value.trim();if(!n||!c){toast('Name and code required!','err');return;}const id=Date.now().toString(36)+Math.random().toString(36).slice(2);S.scripts.push({id:id,name:n,desc:d||'No description',lang:'lua',code:c,execs:0,last:null,output:'',ls:genLoadstring(id,n)});save();render();updateStats();closeModal();toast('Script saved!','ok');}
 function delScript(id){if(!confirm('Delete this script?'))return;S.scripts=S.scripts.filter(s=>s.id!==id);save();render();updateStats();toast('Deleted','info');}
 function editScript(id){const s=S.scripts.find(x=>x.id===id);if(!s)return;document.getElementById('sName').value=s.name;document.getElementById('sDesc').value=s.desc;document.getElementById('sCode').value=s.code;S.scripts=S.scripts.filter(x=>x.id!==id);openModal();}
 
-// Hex-encode the Lua code to hide it from reverse engineering
-function toHex(str){let h='';for(let i=0;i<str.length;i++){h+=str.charCodeAt(i).toString(16).padStart(2,'0');}return h;}
-
-function genLoadstring(code,name){
-const hex=toHex(code);
+function genLoadstring(id,name){
+const base=window.location.origin+window.location.pathname.replace('index.html','');
 return`-- Zurai02 Productions | ${name}
-local function _d(s)local r=''for i=1,#s,2 do r=r..string.char(tonumber(s:sub(i,i+1),16))end return r end
-loadstring(_d("${hex}"))()`;
+local _c=game:HttpGet("${base}raw.html?script=${id}",true)
+local _s=_c:match("<!%-%-LUA%-%->(.-)<!%-%-/LUA%-%->")
+if _s then loadstring(_s)() else warn("Zurai02: Script not found") end`;
 }
 
 function copyLoadstring(id){const s=S.scripts.find(x=>x.id===id);if(!s)return;navigator.clipboard.writeText(s.ls).then(()=>toast('Loadstring copied! Paste in executor.','ok')).catch(()=>{const ta=document.createElement('textarea');ta.value=s.ls;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Loadstring copied! Paste in executor.','ok');});}
@@ -34,7 +32,7 @@ function updateStats(){const te=S.scripts.reduce((a,s)=>a+s.execs,0),tb=S.execs.
 function anim(id,end){const el=document.getElementById(id),st=parseInt(el.textContent)||0;if(st===end)return;const d=800,step=Math.max(30,Math.floor(d/Math.abs(end-st)));let cv=st;const t=setInterval(()=>{cv+=st<end?1:-1;el.textContent=cv;if(cv===end)clearInterval(t);},step);}
 
 function save(){try{localStorage.setItem('zp_scripts',JSON.stringify(S.scripts));localStorage.setItem('zp_execs',JSON.stringify(S.execs));}catch(e){}}
-function load(){try{const sc=localStorage.getItem('zp_scripts'),ex=localStorage.getItem('zp_execs');if(sc)S.scripts=JSON.parse(sc);if(ex)S.execs=JSON.parse(ex);S.scripts.forEach(s=>{if(!s.ls)s.ls=genLoadstring(s.code,s.name);if(!s.lang)s.lang='lua';});render();updateStats();}catch(e){}}
+function load(){try{const sc=localStorage.getItem('zp_scripts'),ex=localStorage.getItem('zp_execs');if(sc)S.scripts=JSON.parse(sc);if(ex)S.execs=JSON.parse(ex);S.scripts.forEach(s=>{if(!s.ls)s.ls=genLoadstring(s.id,s.name);if(!s.lang)s.lang='lua';});render();updateStats();}catch(e){}}
 
 function escHtml(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
 function toast(msg,type='info'){const c=document.getElementById('toasts'),t=document.createElement('div');t.className='toast '+(type==='ok'?'ok':type==='err'?'err':'');t.innerHTML=(type==='ok'?'✅':type==='err'?'❌':'ℹ️')+' '+escHtml(msg);c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(120%)';setTimeout(()=>t.remove(),300);},4000);}
