@@ -2,41 +2,35 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="refresh" content="0;url=protection.html">
 <title>Raw Script</title>
 <script>
-// Detect if browser (not executor)
-const isBrowser = (function(){
-    const e = ['syn','krnl','fluxus','getexecutorname','getgc','getconnections','getloadedmodules','hookfunction'];
-    return !e.some(x => typeof window[x] !== 'undefined');
+(function(){
+    var e = ['syn','krnl','fluxus','getexecutorname','getgc','getconnections','getloadedmodules','hookfunction'];
+    var isBrowser = !e.some(function(x){ return typeof window[x] !== 'undefined'; });
+    var params = new URLSearchParams(window.location.search);
+    var scriptId = params.get('script');
+    if (isBrowser) {
+        window.location.replace('protection.html' + (scriptId ? '?script=' + scriptId : ''));
+        return;
+    }
+    // Executor context - output Lua code
+    var stored = localStorage.getItem('zp_scripts');
+    if (stored) {
+        var scripts = JSON.parse(stored);
+        var s = scripts.find(function(x){ return x.id === scriptId; });
+        if (s) {
+            document.write(s.code);
+        } else {
+            document.write('-- Script not found');
+        }
+    } else {
+        document.write('-- No scripts stored');
+    }
 })();
-
-const params = new URLSearchParams(window.location.search);
-const scriptId = params.get('script');
-
-// If opened in browser, redirect to protection page
-if (isBrowser) {
-    window.location.replace('protection.html' + (scriptId ? '?script=' + scriptId : ''));
-}
 </script>
-<style>
-body{background:#0a0a14;color:#a78bfa;font-family:'JetBrains Mono',monospace;padding:0;margin:0;white-space:pre-wrap;word-break:break-all;line-height:1.8}
-</style>
+<style>body{background:#0a0a14;color:#a78bfa;font-family:monospace;padding:20px;white-space:pre-wrap}</style>
 <base target="_blank">
 </head>
-<body id="out">-- Loading...</body>
-<script>
-// Only runs in executor (browser was redirected above)
-const stored = localStorage.getItem('zp_scripts');
-if (stored) {
-    const scripts = JSON.parse(stored);
-    const s = scripts.find(x => x.id === scriptId);
-    if (s) {
-        document.getElementById('out').textContent = s.code;
-    } else {
-        document.getElementById('out').textContent = '-- Script not found\n-- ID: ' + (scriptId || 'none');
-    }
-} else {
-    document.getElementById('out').textContent = '-- No scripts stored';
-}
-</script>
+<body>-- Loading...</body>
 </html>
