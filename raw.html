@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Raw Script</title>
+<style>
+body{background:#0a0a14;color:#a78bfa;font-family:'JetBrains Mono',monospace;padding:20px;white-space:pre-wrap;word-break:break-all;line-height:1.8}
+</style>
+<base target="_blank">
+</head>
+<body id="output">Loading script...</body>
+<script>
+const params=new URLSearchParams(window.location.search);
+const id=params.get('script');
+const stored=localStorage.getItem('zp_scripts');
+if(stored){const scripts=JSON.parse(stored);const s=scripts.find(x=>x.id===id);if(s){document.getElementById('output').textContent=s.code;}else{document.getElementById('output').textContent='-- Script not found';}}
+else{document.getElementById('output').textContent='-- No scripts stored';}
+</script>
+</html>
