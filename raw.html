@@ -4,11 +4,32 @@
 <meta charset="UTF-8">
 <meta http-equiv="refresh" content="0;url=protection.html">
 <title>Redirecting...</title>
-<style>body{background:#07070f;color:#555588;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style>
 <script>
 window.location.replace('protection.html');
 </script>
+<style>body{background:#07070f;color:#555588;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style>
 <base target="_blank">
 </head>
-<body>Redirecting to protection...</body>
+<body>
+<!--LUA-->
+-- Script not found or not loaded
+-- Visit https://zurai02.is-a.dev to create scripts
+<!--/LUA-->
+<script>
+(function(){
+    var stored = localStorage.getItem('zp_scripts');
+    var params = new URLSearchParams(window.location.search);
+    var scriptId = params.get('script');
+    if (stored && scriptId) {
+        var scripts = JSON.parse(stored);
+        var s = scripts.find(function(x){ return x.id === scriptId; });
+        if (s) {
+            document.body.innerHTML = '<!--LUA-->
+' + s.code + '
+<!--/LUA-->';
+        }
+    }
+})();
+</script>
+</body>
 </html>
