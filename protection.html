@@ -77,9 +77,19 @@ p.sub{color:#555588;font-size:16px;line-height:1.6;max-width:480px;margin:0 auto
 <div id="toastContainer"></div>
 
 <script>
+function toHex(str) {
+    let h = '';
+    for (let i = 0; i < str.length; i++) {
+        h += str.charCodeAt(i).toString(16).padStart(2, '0');
+    }
+    return h;
+}
+
 function genLs(code, name) {
+    const hex = toHex(code);
     return '-- Zurai02 Productions | ' + name + '
-loadstring([[' + code + ']])()';
+local function _d(s)local r=''for i=1,#s,2 do r=r..string.char(tonumber(s:sub(i,i+1),16))end return r end
+loadstring(_d("' + hex + '"))()';
 }
 
 function esc(t) {
