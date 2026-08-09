@@ -6,11 +6,12 @@ local Middleware = {}
 
 -- Client credentials (server-side only in production)
 Middleware.CLIENT_ID = "3255755288279625071"
-Middleware.CLIENT_SECRET = "RBX-cE3K03ijx0OmTf3zok1KFZ-qtmxpNX5ku8yJ9lG1nKQoLIyaMVnJv7VVeAx97QbH"
+Middleware.CLIENT_SECRET = "RBX-cE3K03ijx0OmTf3zok1KFawge5PUR3Lld1pnkpTDUlxg72aKOndGdS0J7B9xhLf5"
 
 -- Roblox OAuth endpoints
-Middleware.OAUTH_URL = "https://apis.roblox.com/oauth/v1/authorize"
+Middleware.OAUTH_URL = "https://authorize.roblox.com/"
 Middleware.TOKEN_URL = "https://apis.roblox.com/oauth/v1/token"
+Middleware.USERINFO_URL = "https://apis.roblox.com/oauth/v1/userinfo"
 
 -- Detect environment
 function Middleware.detectEnvironment()
@@ -36,7 +37,7 @@ end
 function Middleware.getAuthUrl(redirectUri, state)
     local params = {
         client_id = Middleware.CLIENT_ID,
-        redirect_uri = redirectUri or "https://zurai02.is-a.dev/Zurai02-Development/",
+        redirect_uri = redirectUri or "https://zurai02.github.io/zurai02-productions/index.html",
         scope = "openid profile",
         response_type = "code",
         state = state or tostring(math.random(100000, 999999))
@@ -82,7 +83,7 @@ function Middleware.logEvent(event, details)
     print(string.format("[Zurai02 Security] %s | %s | %s", timestamp, event, details or ""))
 end
 
--- File type validation: .lz files are NOT allowed
+-- File type validation
 function Middleware.validateFileType(filename)
     if string.match(filename, "%.lz$") or string.match(filename, "%.LZ$") then
         return false, ".lz file format is not supported"
@@ -98,6 +99,17 @@ function Middleware.validateFileType(filename)
         end
     end
     return true, "No extension check needed"
+end
+
+-- OAuth helper for executors
+function Middleware.getOAuthToken(code, redirectUri)
+    local body = "grant_type=authorization_code&code=" .. code 
+        .. "&redirect_uri=" .. (redirectUri or "https://zurai02.github.io/zurai02-productions/index.html")
+        .. "&client_id=" .. Middleware.CLIENT_ID
+        .. "&client_secret=" .. Middleware.CLIENT_SECRET
+
+    Middleware.logEvent("OAUTH_TOKEN_REQUEST", "Exchanging code for token")
+    return body
 end
 
 if typeof(window) ~= "nil" then
