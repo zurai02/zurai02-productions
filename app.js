@@ -1,805 +1,652 @@
 /**
- * Zurai02 Productions - Script Hub v2.1
- * Fixed OAuth 2.0 Implementation
+ * Zurai02 Productions v3.0
+ * Production-grade script management
+ * Architecture: Event delegation, module pattern, zero global pollution
  */
 
-'use strict';
+(function() {
+    'use strict';
 
-// ============================================
-// CONFIGURATION
-// ============================================
-const CONFIG = Object.freeze({
-    CLIENT_ID: '3255755288279625071',
-    REDIRECT_URI: 'https://zurai02.github.io/zurai02-productions/index.html',
-    OAUTH_BASE: 'https://apis.roblox.com/oauth/v1/authorize',
-    TOKEN_URL: 'https://apis.roblox.com/oauth/v1/token',
-    USERINFO_URL: 'https://apis.roblox.com/oauth/v1/userinfo',
-    SCOPE: 'openid profile',
-    STORAGE_KEYS: Object.freeze({
-        SCRIPTS: 'zp_scripts',
-        EXECS: 'zp_execs',
-        USER: 'zurai_user',
-        ACCESS_TOKEN: 'roblox_access_token',
-        REFRESH_TOKEN: 'roblox_refresh_token',
-        OAUTH_STATE: 'oauth_state',
-        PKCE_VERIFIER: 'pkce_verifier'
-    })
-});
+    // ============================================
+    // CONFIGURATION
+    // ============================================
+    const CONFIG = Object.freeze({
+        CLIENT_ID: '3255755288279625071',
+        REDIRECT_URI: 'https://zurai02-productions.vercel.app/',
+        BASE_URL: 'https://zurai02-productions.vercel.app/',
+        OAUTH_AUTHORIZE: 'https://apis.roblox.com/oauth/v1/authorize',
+        OAUTH_TOKEN: 'https://apis.roblox.com/oauth/v1/token',
+        OAUTH_USERINFO: 'https://apis.roblox.com/oauth/v1/userinfo',
+        SCOPE: 'openid profile',
+        STORAGE: Object.freeze({
+            SCRIPTS: 'zp_scripts_v3',
+            EXECS: 'zp_execs_v3',
+            USER: 'zp_user_v3',
+            TOKEN: 'zp_token_v3',
+            REFRESH: 'zp_refresh_v3',
+            STATE: 'zp_state_v3',
+            PKCE: 'zp_pkce_v3'
+        })
+    });
 
-// ============================================
-// STATE MANAGEMENT
-// ============================================
-const State = {
-    user: null,
-    scripts: [],
-    executions: [],
-    isBrowser: true,
-
-    init() {
-        this.scripts = Storage.get(CONFIG.STORAGE_KEYS.SCRIPTS, []);
-        this.executions = Storage.get(CONFIG.STORAGE_KEYS.EXECS, []);
-        this.user = Storage.get(CONFIG.STORAGE_KEYS.USER, null);
-    },
-
-    setUser(user) {
-        this.user = user;
-        Storage.set(CONFIG.STORAGE_KEYS.USER, user);
-    },
-
-    clearUser() {
-        this.user = null;
-        Storage.remove(CONFIG.STORAGE_KEYS.USER);
-        Storage.remove(CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
-        Storage.remove(CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
-        Storage.remove(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
-    }
-};
-
-// ============================================
-// STORAGE UTILITIES
-// ============================================
-const Storage = {
-    get(key, defaultValue = null) {
-        try {
-            const item = localStorage.getItem(key);
-            return item ? JSON.parse(item) : defaultValue;
-        } catch {
-            return defaultValue;
+    // ============================================
+    // STORAGE
+    // ============================================
+    const Store = {
+        get(key, fallback = null) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch { return fallback; }
+        },
+        set(key, value) {
+            try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+            catch { return false; }
+        },
+        remove(key) {
+            try { localStorage.removeItem(key); } catch {}
         }
-    },
+    };
 
-    set(key, value) {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-            return true;
-        } catch {
-            return false;
+    // ============================================
+    // STATE
+    // ============================================
+    const AppState = {
+        user: null,
+        scripts: [],
+        executions: [],
+        isBrowser: true,
+
+        init() {
+            this.scripts = Store.get(CONFIG.STORAGE.SCRIPTS, []);
+            this.executions = Store.get(CONFIG.STORAGE.EXECS, []);
+            this.user = Store.get(CONFIG.STORAGE.USER, null);
+        },
+
+        persist() {
+            Store.set(CONFIG.STORAGE.SCRIPTS, this.scripts);
+            Store.set(CONFIG.STORAGE.EXECS, this.executions);
         }
-    },
+    };
 
-    remove(key) {
-        try {
-            localStorage.removeItem(key);
-        } catch { }
-    }
-};
+    // ============================================
+    // CRYPTO / PKCE
+    // ============================================
+    const Crypto = {
+        randomString(length = 32) {
+            const buf = new Uint8Array(length);
+            window.crypto.getRandomValues(buf);
+            return btoa(String.fromCharCode(...buf))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '')
+                .slice(0, length);
+        },
 
-// ============================================
-// ENVIRONMENT DETECTION
-// ============================================
-const Environment = {
-    EXECUTOR_GLOBALS: Object.freeze([
-        'syn', 'krnl', 'fluxus', 'oxygen', 'electron',
-        'getexecutorname', 'getscriptclosure', 'getgc',
-        'getconnections', 'getloadedmodules', 'hookfunction'
-    ]),
-
-    detect() {
-        const hasExecutorGlobal = this.EXECUTOR_GLOBALS.some(
-            g => typeof window[g] !== 'undefined'
-        );
-        State.isBrowser = !hasExecutorGlobal;
-        return State.isBrowser;
-    },
-
-    isBrowser() {
-        return State.isBrowser;
-    }
-};
-
-// ============================================
-// NOTIFICATION SYSTEM
-// ============================================
-const Notify = {
-    container: null,
-
-    init() {
-        this.container = document.getElementById('toastContainer');
-    },
-
-    show(message, type = 'info') {
-        if (!this.container) return;
-
-        const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `<span>${icons[type] || icons.info}</span> ${Utils.escapeHtml(message)}`;
-
-        this.container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(120%)';
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    }
-};
-
-// ============================================
-// PKCE UTILITIES (Required for public clients)
-// ============================================
-const PKCE = {
-    generateVerifier() {
-        const array = new Uint8Array(32);
-        crypto.getRandomValues(array);
-        return btoa(String.fromCharCode(...array))
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=/g, '');
-    },
-
-    async generateChallenge(verifier) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(verifier);
-        const digest = await crypto.subtle.digest('SHA-256', data);
-        return btoa(String.fromCharCode(...new Uint8Array(digest)))
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=/g, '');
-    }
-};
-
-// ============================================
-// AUTHENTICATION MODULE
-// ============================================
-const Auth = {
-    async exchangeCode(code) {
-        try {
-            const pkceVerifier = Storage.get(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
-
-            const params = new URLSearchParams({
-                grant_type: 'authorization_code',
-                code: code,
-                redirect_uri: CONFIG.REDIRECT_URI,
-                client_id: CONFIG.CLIENT_ID
-            });
-
-            // Add PKCE verifier if available
-            if (pkceVerifier) {
-                params.append('code_verifier', pkceVerifier);
-            }
-
-            console.log('[Auth] Token request params:', params.toString());
-
-            const response = await fetch(CONFIG.TOKEN_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params.toString()
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('[Auth] Token error response:', errorText);
-                throw new Error(`Token exchange failed: ${response.status} - ${errorText}`);
-            }
-
-            const data = await response.json();
-            Storage.set(CONFIG.STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
-            Storage.set(CONFIG.STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
-
-            window.history.replaceState({}, document.title, window.location.pathname);
-
-            await this.fetchUserInfo(data.access_token);
-            Notify.show('Successfully logged in with Roblox!', 'success');
-        } catch (err) {
-            console.error('[Auth] Token exchange failed:', err);
-            Notify.show('Login failed. Please try again.', 'error');
+        async sha256(plain) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(plain);
+            const hash = await window.crypto.subtle.digest('SHA-256', data);
+            return btoa(String.fromCharCode(...new Uint8Array(hash)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
         }
-    },
+    };
 
-    async fetchUserInfo(accessToken) {
-        try {
-            const response = await fetch(CONFIG.USERINFO_URL, {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
+    // ============================================
+    // ENVIRONMENT
+    // ============================================
+    const Env = {
+        EXECUTOR_MARKERS: Object.freeze([
+            'syn', 'krnl', 'fluxus', 'oxygen', 'electron',
+            'getexecutorname', 'getscriptclosure', 'getgc',
+            'getconnections', 'getloadedmodules', 'hookfunction',
+            'setreadonly', 'getrawmetatable'
+        ]),
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    await this.refreshToken();
-                    return;
-                }
-                throw new Error(`User info fetch failed: ${response.status}`);
-            }
+        detect() {
+            const found = this.EXECUTOR_MARKERS.some(m => typeof window[m] !== 'undefined');
+            AppState.isBrowser = !found;
+            return AppState.isBrowser;
+        },
 
-            const data = await response.json();
-            const user = {
-                id: data.sub,
-                name: data.preferred_username || data.name,
-                displayName: data.nickname || data.preferred_username,
-                picture: data.picture
+        isBrowser() { return AppState.isBrowser; }
+    };
+
+    // ============================================
+    // NOTIFICATIONS
+    // ============================================
+    const Toast = {
+        container: null,
+
+        init() {
+            this.container = document.getElementById('toastContainer');
+        },
+
+        push(message, type = 'info') {
+            if (!this.container) return;
+
+            const icons = {
+                info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+                success: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+                error: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+                warning: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
             };
 
-            State.setUser(user);
-            UI.updateForUser(user);
-        } catch (err) {
-            console.error('[Auth] User info error:', err);
-            this.logout();
-        }
-    },
+            const el = document.createElement('div');
+            el.className = `toast toast--${type}`;
+            el.innerHTML = `${icons[type] || icons.info}<span>${escapeHtml(message)}</span>`;
+            this.container.appendChild(el);
 
-    async refreshToken() {
-        const refreshToken = Storage.get(CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
-        if (!refreshToken) {
-            this.logout();
-            return;
+            setTimeout(() => {
+                el.classList.add('is-exiting');
+                el.addEventListener('animationend', () => el.remove(), { once: true });
+            }, 4000);
         }
+    };
 
-        try {
+    // ============================================
+    // AUTH
+    // ============================================
+    const Auth = {
+        async buildAuthUrl() {
+            const state = Crypto.randomString(32);
+            sessionStorage.setItem(CONFIG.STORAGE.STATE, state);
+
+            const verifier = Crypto.randomString(128);
+            const challenge = await Crypto.sha256(verifier);
+            Store.set(CONFIG.STORAGE.PKCE, verifier);
+
             const params = new URLSearchParams({
-                grant_type: 'refresh_token',
-                refresh_token: refreshToken,
-                client_id: CONFIG.CLIENT_ID
+                client_id: CONFIG.CLIENT_ID,
+                redirect_uri: CONFIG.REDIRECT_URI,
+                scope: CONFIG.SCOPE,
+                response_type: 'code',
+                state: state,
+                code_challenge: challenge,
+                code_challenge_method: 'S256'
             });
 
-            const response = await fetch(CONFIG.TOKEN_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params.toString()
-            });
+            return `${CONFIG.OAUTH_AUTHORIZE}?${params.toString()}`;
+        },
 
-            if (!response.ok) throw new Error('Refresh failed');
+        async beginLogin() {
+            const url = await this.buildAuthUrl();
+            window.location.href = url;
+        },
 
-            const data = await response.json();
-            Storage.set(CONFIG.STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
-            Storage.set(CONFIG.STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
-            await this.fetchUserInfo(data.access_token);
-        } catch (err) {
-            console.error('[Auth] Refresh error:', err);
-            this.logout();
-        }
-    },
+        async exchangeCode(code) {
+            try {
+                const verifier = Store.get(CONFIG.STORAGE.PKCE);
+                const params = new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    code,
+                    redirect_uri: CONFIG.REDIRECT_URI,
+                    client_id: CONFIG.CLIENT_ID
+                });
+                if (verifier) params.append('code_verifier', verifier);
 
-    generateState() {
-        const array = new Uint8Array(16);
-        crypto.getRandomValues(array);
-        return btoa(String.fromCharCode(...array))
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=/g, '')
-            .substring(0, 32);
-    },
+                const res = await fetch(CONFIG.OAUTH_TOKEN, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params.toString()
+                });
 
-    async buildOAuthUrl() {
-        const state = this.generateState();
-        sessionStorage.setItem(CONFIG.STORAGE_KEYS.OAUTH_STATE, state);
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`${res.status}: ${text}`);
+                }
 
-        // Generate PKCE
-        const verifier = PKCE.generateVerifier();
-        const challenge = await PKCE.generateChallenge(verifier);
-        Storage.set(CONFIG.STORAGE_KEYS.PKCE_VERIFIER, verifier);
+                const data = await res.json();
+                Store.set(CONFIG.STORAGE.TOKEN, data.access_token);
+                Store.set(CONFIG.STORAGE.REFRESH, data.refresh_token);
 
-        const params = new URLSearchParams({
-            client_id: CONFIG.CLIENT_ID,
-            redirect_uri: CONFIG.REDIRECT_URI,
-            scope: CONFIG.SCOPE,
-            response_type: 'code',
-            state: state,
-            code_challenge: challenge,
-            code_challenge_method: 'S256'
-        });
+                window.history.replaceState({}, '', window.location.pathname);
+                await this.fetchUser(data.access_token);
+                Toast.push('Signed in successfully', 'success');
+            } catch (err) {
+                console.error('[Auth] Exchange failed:', err);
+                Toast.push('Authentication failed', 'error');
+            }
+        },
 
-        const url = `${CONFIG.OAUTH_BASE}?${params.toString()}`;
-        console.log('[Auth] Authorization URL:', url);
-        return url;
-    },
+        async fetchUser(token) {
+            try {
+                const res = await fetch(CONFIG.OAUTH_USERINFO, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error(res.status);
+                const data = await res.json();
 
-    async handleLogin() {
-        const url = await this.buildOAuthUrl();
-        console.log('[Auth] Redirecting to:', url);
-        window.location.href = url;
-    },
+                AppState.user = {
+                    id: data.sub,
+                    name: data.preferred_username || data.name,
+                    displayName: data.nickname || data.preferred_username,
+                    picture: data.picture
+                };
+                Store.set(CONFIG.STORAGE.USER, AppState.user);
+                UI.renderUser();
+            } catch (err) {
+                console.error('[Auth] User fetch failed:', err);
+                this.signOut();
+            }
+        },
 
-    handleCallback() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const state = urlParams.get('state');
-        const error = urlParams.get('error');
-        const errorDesc = urlParams.get('error_description');
+        async tryRefresh() {
+            const refresh = Store.get(CONFIG.STORAGE.REFRESH);
+            if (!refresh) return false;
 
-        console.log('[Auth] Callback params:', { code: !!code, state, error, errorDesc });
+            try {
+                const params = new URLSearchParams({
+                    grant_type: 'refresh_token',
+                    refresh_token: refresh,
+                    client_id: CONFIG.CLIENT_ID
+                });
 
-        if (error) {
-            console.error('[Auth] OAuth error:', error, errorDesc);
-            Notify.show(`Login failed: ${errorDesc || error}`, 'error');
-            return;
-        }
+                const res = await fetch(CONFIG.OAUTH_TOKEN, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params.toString()
+                });
 
-        if (code && state) {
-            const savedState = sessionStorage.getItem(CONFIG.STORAGE_KEYS.OAUTH_STATE);
-            console.log('[Auth] State validation:', { received: state, saved: savedState });
+                if (!res.ok) throw new Error('Refresh failed');
+                const data = await res.json();
+                Store.set(CONFIG.STORAGE.TOKEN, data.access_token);
+                Store.set(CONFIG.STORAGE.REFRESH, data.refresh_token);
+                await this.fetchUser(data.access_token);
+                return true;
+            } catch {
+                this.signOut();
+                return false;
+            }
+        },
 
-            if (state !== savedState) {
-                Notify.show('Security check failed. Invalid state.', 'error');
+        handleCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const state = params.get('state');
+            const error = params.get('error');
+            const errorDesc = params.get('error_description');
+
+            if (error) {
+                Toast.push(`Auth error: ${errorDesc || error}`, 'error');
                 return;
             }
-            this.exchangeCode(code);
-        } else {
-            const token = Storage.get(CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
-            if (token) {
-                this.fetchUserInfo(token);
+
+            if (code && state) {
+                const saved = sessionStorage.getItem(CONFIG.STORAGE.STATE);
+                if (state !== saved) {
+                    Toast.push('Security validation failed', 'error');
+                    return;
+                }
+                this.exchangeCode(code);
+            } else {
+                const token = Store.get(CONFIG.STORAGE.TOKEN);
+                if (token) this.fetchUser(token);
             }
+        },
+
+        signOut() {
+            AppState.user = null;
+            Store.remove(CONFIG.STORAGE.USER);
+            Store.remove(CONFIG.STORAGE.TOKEN);
+            Store.remove(CONFIG.STORAGE.REFRESH);
+            Store.remove(CONFIG.STORAGE.PKCE);
+            UI.renderGuest();
+            Toast.push('Signed out', 'info');
+        },
+
+        toggleMenu() {
+            const existing = document.querySelector('.user-menu');
+            if (existing) { existing.remove(); return; }
+
+            const menu = document.createElement('div');
+            menu.className = 'user-menu';
+            menu.innerHTML = `
+                <button class="user-menu__item" data-action="view-profile">View Profile</button>
+                <button class="user-menu__item user-menu__item--danger" data-action="sign-out">Sign Out</button>
+            `;
+            document.getElementById('authButton').parentElement.appendChild(menu);
         }
-    },
+    };
 
-    logout() {
-        State.clearUser();
-        UI.resetAuthButton();
-        Notify.show('Logged out successfully', 'info');
-    },
+    // ============================================
+    // SCRIPTS
+    // ============================================
+    const Scripts = {
+        generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        },
 
-    showUserMenu() {
-        const existing = document.querySelector('.user-menu');
-        if (existing) {
-            existing.remove();
-            return;
+        generateLoadstring(id, name) {
+            const url = `${CONFIG.BASE_URL}raw.html?script=${id}`;
+            return `local _c = game:HttpGet("${url}", true)
+local _s = _c:match("<!%-%-LUA%-%->(.-)<!%/LUA%>")
+if _s then loadstring(_s)() else warn("Zurai02: Script not found") end`;
+        },
+
+        create(name, desc, code) {
+            if (!AppState.user) {
+                Toast.push('Authentication required', 'warning');
+                Auth.beginLogin();
+                return;
+            }
+
+            const script = {
+                id: this.generateId(),
+                name: name.trim(),
+                desc: (desc || 'No description').trim(),
+                code: code.trim(),
+                lang: 'lua',
+                execs: 0,
+                last: null,
+                output: '',
+                owner: AppState.user.id,
+                createdAt: new Date().toISOString()
+            };
+            script.ls = this.generateLoadstring(script.id, script.name);
+
+            AppState.scripts.push(script);
+            AppState.persist();
+            this.renderAll();
+            UI.updateStats();
+            Toast.push('Script saved', 'success');
+        },
+
+        remove(id) {
+            if (!confirm('Delete this script permanently?')) return;
+            AppState.scripts = AppState.scripts.filter(s => s.id !== id);
+            AppState.persist();
+            this.renderAll();
+            UI.updateStats();
+            Toast.push('Script deleted', 'info');
+        },
+
+        copyLoadstring(id) {
+            const script = AppState.scripts.find(s => s.id === id);
+            if (!script) return;
+
+            navigator.clipboard.writeText(script.ls).then(() => {
+                Toast.push('Loadstring copied to clipboard', 'success');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = script.ls;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                Toast.push('Loadstring copied to clipboard', 'success');
+            });
+        },
+
+        execute(id) {
+            const script = AppState.scripts.find(s => s.id === id);
+            if (!script) return;
+
+            if (Env.isBrowser()) {
+                window.open(`protection.html?script=${id}`, '_blank');
+                Toast.push('Execution blocked in browser', 'warning');
+                this.logExec(id, false, 'browser');
+                return;
+            }
+
+            // In executor: would run actual Lua
+            script.execs++;
+            script.last = new Date().toISOString();
+            script.output = '[Executor trace would appear here]';
+            this.logExec(id, true, 'executed');
+            AppState.persist();
+            this.renderAll();
+            UI.updateStats();
+            Toast.push(`Executed (${script.execs} total)`, 'success');
+        },
+
+        logExec(id, ok, msg) {
+            AppState.executions.push({
+                scriptId: id,
+                timestamp: new Date().toISOString(),
+                success: ok,
+                message: msg,
+                env: Env.isBrowser() ? 'browser' : 'executor'
+            });
+            AppState.persist();
+        },
+
+        renderAll() {
+            const list = document.getElementById('scriptList');
+            const empty = document.getElementById('emptyState');
+
+            if (!AppState.scripts.length) {
+                list.innerHTML = '';
+                empty.classList.remove('is-hidden');
+                return;
+            }
+
+            empty.classList.add('is-hidden');
+            list.innerHTML = AppState.scripts.map(s => this.renderItem(s)).join('');
+        },
+
+        renderItem(s) {
+            const last = s.last ? new Date(s.last).toLocaleString() : 'Never';
+            const notice = Env.isBrowser() ? `
+                <div class="script-item__notice">
+                    <div class="script-item__notice-title">Protected Execution</div>
+                    <p class="script-item__notice-text">This script must be run from a Roblox executor. Copy the loadstring below.</p>
+                    <button type="button" class="button button--secondary button--small" data-action="copy" data-id="${s.id}">Copy Loadstring</button>
+                </div>
+            ` : '';
+
+            return `
+                <article class="script-item" data-script-id="${s.id}">
+                    <div class="script-item__header">
+                        <h3 class="script-item__title">${escapeHtml(s.name)}</h3>
+                        <span class="script-item__badge">${s.lang}</span>
+                    </div>
+                    <p class="script-item__desc">${escapeHtml(s.desc)}</p>
+                    <div class="script-item__meta">
+                        <span>${s.execs} executions</span>
+                        <span>Last: ${last}</span>
+                    </div>
+                    <div class="script-item__actions">
+                        <button type="button" class="button button--secondary button--small" data-action="run" data-id="${s.id}">Run</button>
+                        <button type="button" class="button button--secondary button--small" data-action="copy" data-id="${s.id}">Copy</button>
+                        <button type="button" class="button button--secondary button--small" data-action="edit" data-id="${s.id}">Edit</button>
+                        <button type="button" class="button button--danger button--small" data-action="delete" data-id="${s.id}">Delete</button>
+                    </div>
+                    ${notice}
+                    <div class="script-item__loadstring">
+                        <div class="script-item__loadstring-label">Loadstring</div>
+                        <code class="script-item__loadstring-code">${escapeHtml(s.ls)}</code>
+                    </div>
+                </article>
+            `;
         }
+    };
 
-        const menu = document.createElement('div');
-        menu.className = 'user-menu';
-        menu.innerHTML = `
-            <div class="user-menu-item" onclick="window.open('https://www.roblox.com/users/${State.user?.id}/profile', '_blank')">👤 View Profile</div>
-            <div class="user-menu-item" onclick="Auth.logout()" style="color: var(--error)">🚪 Logout</div>
-        `;
+    // ============================================
+    // UI
+    // ============================================
+    const UI = {
+        modal: null,
 
-        const authBtn = document.getElementById('authButton');
-        authBtn.parentElement.style.position = 'relative';
-        authBtn.parentElement.appendChild(menu);
+        init() {
+            this.modal = document.getElementById('modal');
+            this.bindEvents();
+        },
 
-        setTimeout(() => {
-            document.addEventListener('click', function closeMenu(e) {
-                if (!menu.contains(e.target) && e.target !== authBtn) {
-                    menu.remove();
-                    document.removeEventListener('click', closeMenu);
+        bindEvents() {
+            // Event delegation — no inline handlers
+            document.addEventListener('click', (e) => {
+                const target = e.target.closest('[data-action]');
+                if (!target) return;
+
+                const action = target.dataset.action;
+                const id = target.dataset.id;
+
+                switch (action) {
+                    case 'open-modal': this.openModal(); break;
+                    case 'close-modal': this.closeModal(); break;
+                    case 'sign-in': Auth.beginLogin(); break;
+                    case 'sign-out': Auth.signOut(); break;
+                    case 'view-profile':
+                        if (AppState.user) window.open(`https://www.roblox.com/users/${AppState.user.id}/profile`, '_blank');
+                        break;
+                    case 'toggle-menu': Auth.toggleMenu(); break;
+                    case 'run': Scripts.execute(id); break;
+                    case 'copy': Scripts.copyLoadstring(id); break;
+                    case 'delete': Scripts.remove(id); break;
+                    case 'edit': this.prepEdit(id); break;
                 }
             });
-        }, 10);
-    }
-};
 
-// ============================================
-// SCRIPT MANAGEMENT
-// ============================================
-const ScriptManager = {
-    modal: null,
+            // Form submission
+            document.getElementById('scriptForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('scriptName').value;
+                const desc = document.getElementById('scriptDesc').value;
+                const code = document.getElementById('scriptCode').value;
+                Scripts.create(name, desc, code);
+                this.closeModal();
+                e.target.reset();
+            });
 
-    init() {
-        this.modal = document.getElementById('modal');
-        this.load();
-    },
-
-    openModal() {
-        if (!State.user) {
-            Notify.show('Please login to create scripts', 'warning');
-            Auth.handleLogin();
-            return;
-        }
-        this.modal.classList.add('active');
-        document.getElementById('scriptName').focus();
-    },
-
-    closeModal() {
-        this.modal.classList.remove('active');
-        ['scriptName', 'scriptDesc', 'scriptCode'].forEach(id => {
-            document.getElementById(id).value = '';
-        });
-    },
-
-    save() {
-        if (!State.user) {
-            Notify.show('Please login to save scripts', 'error');
-            return;
-        }
-
-        const name = document.getElementById('scriptName').value.trim();
-        const desc = document.getElementById('scriptDesc').value.trim();
-        const code = document.getElementById('scriptCode').value.trim();
-
-        if (!name || !code) {
-            Notify.show('Name and code are required', 'error');
-            return;
-        }
-
-        const script = {
-            id: Utils.generateId(),
-            name,
-            desc: desc || 'No description',
-            lang: 'lua',
-            code,
-            execs: 0,
-            last: null,
-            output: '',
-            owner: State.user.id,
-            createdAt: new Date().toISOString()
-        };
-
-        script.ls = this.generateLoadstring(script.id, script.name);
-        State.scripts.push(script);
-        this.persist();
-        this.render();
-        this.updateStats();
-        this.closeModal();
-        Notify.show('Script saved successfully', 'success');
-    },
-
-    delete(id) {
-        if (!confirm('Are you sure you want to delete this script?')) return;
-        State.scripts = State.scripts.filter(s => s.id !== id);
-        this.persist();
-        this.render();
-        this.updateStats();
-        Notify.show('Script deleted', 'info');
-    },
-
-    edit(id) {
-        const script = State.scripts.find(s => s.id === id);
-        if (!script) return;
-
-        document.getElementById('scriptName').value = script.name;
-        document.getElementById('scriptDesc').value = script.desc;
-        document.getElementById('scriptCode').value = script.code;
-
-        State.scripts = State.scripts.filter(s => s.id !== id);
-        this.openModal();
-    },
-
-    generateLoadstring(id, name) {
-        let base = window.location.origin + window.location.pathname;
-        base = base.replace(/[^/]*$/, '');
-        if (!base.endsWith('/')) base += '/';
-
-        const url = `${base}raw.html?script=${id}`;
-
-        return `-- Zurai02 Productions | ${name}
-local _c = game:HttpGet("${url}", true)
-local _s = _c:match("<!%-%-LUA%-%->(.-)<!%/LUA%>")
-if _s then
-    loadstring(_s)()
-else
-    warn("Zurai02: Script not found or failed to load")
-end`;
-    },
-
-    copyLoadstring(id) {
-        const script = State.scripts.find(s => s.id === id);
-        if (!script) return;
-
-        Utils.copyToClipboard(script.ls)
-            .then(() => Notify.show('Loadstring copied! Paste in your executor.', 'success'))
-            .catch(() => Notify.show('Failed to copy loadstring', 'error'));
-    },
-
-    run(id) {
-        const script = State.scripts.find(s => s.id === id);
-        if (!script) return;
-
-        if (Environment.isBrowser()) {
-            window.open(`protection.html?script=${id}&name=${encodeURIComponent(script.name)}`, '_blank');
-            Notify.show('Browser execution blocked. Opening protection page.', 'warning');
-            this.logExecution(id, false, 'Browser blocked');
-            return;
-        }
-
-        let output = '';
-        let success = true;
-        try {
-            output = this.traceLua(script.code);
-        } catch (err) {
-            output = `Error: ${err.message}`;
-            success = false;
-        }
-
-        script.execs++;
-        script.last = new Date().toISOString();
-        script.output = output;
-        this.logExecution(id, success, success ? 'Executed' : 'Error');
-        this.persist();
-        this.updateStats();
-        this.render();
-        Notify.show(
-            success ? `Executed! (${script.execs} total)` : 'Execution failed',
-            success ? 'success' : 'error'
-        );
-    },
-
-    traceLua(code) {
-        const lines = code.split('\n');
-        const output = [];
-
-        const patterns = [
-            { test: /^--/, icon: '💬' },
-            { test: /^local\s+/, icon: '📦', extract: /local\s+(\w+)/ },
-            { test: /^function/, icon: '🔧' },
-            { test: /^end$/, icon: '🔚' },
-            { test: /^if\s+/, icon: '❓' },
-            { test: /^(for|while)\s+/, icon: '🔄' },
-            { test: /^print/, icon: '🖨️', extract: /print\s*\((.+)\)/ },
-            { test: /^(game:|workspace|Players)/, icon: '🎮' }
-        ];
-
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-
-            let matched = false;
-            for (const pattern of patterns) {
-                if (pattern.test.test(trimmed)) {
-                    let text = trimmed;
-                    if (pattern.extract) {
-                        const match = trimmed.match(pattern.extract);
-                        text = match ? match[1].replace(/["']/g, '').replace(/\.\./g, '') : '';
-                    }
-                    output.push(`${pattern.icon} ${text.substring(0, 50)}`);
-                    matched = true;
-                    break;
+            // Modal backdrop / escape
+            this.modal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal__backdrop')) this.closeModal();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && this.modal.classList.contains('is-open')) {
+                    this.closeModal();
                 }
+            });
+        },
+
+        openModal() {
+            if (!AppState.user) {
+                Toast.push('Sign in to create scripts', 'warning');
+                Auth.beginLogin();
+                return;
             }
+            this.modal.classList.add('is-open');
+            this.modal.setAttribute('aria-hidden', 'false');
+            document.getElementById('scriptName').focus();
+        },
 
-            if (!matched) {
-                output.push(`▶️ ${trimmed.substring(0, 50)}`);
-            }
-        }
+        closeModal() {
+            this.modal.classList.remove('is-open');
+            this.modal.setAttribute('aria-hidden', 'true');
+            document.getElementById('scriptForm').reset();
+        },
 
-        return output.join('\n') || '[No output]';
-    },
+        prepEdit(id) {
+            const s = AppState.scripts.find(x => x.id === id);
+            if (!s) return;
+            document.getElementById('scriptName').value = s.name;
+            document.getElementById('scriptDesc').value = s.desc;
+            document.getElementById('scriptCode').value = s.code;
+            AppState.scripts = AppState.scripts.filter(x => x.id !== id);
+            AppState.persist();
+            this.openModal();
+        },
 
-    logExecution(scriptId, success, message) {
-        State.executions.push({
-            scriptId,
-            timestamp: new Date().toISOString(),
-            success,
-            message,
-            environment: Environment.isBrowser() ? 'browser' : 'executor'
-        });
-        this.persist();
-    },
+        renderUser() {
+            const btn = document.getElementById('authButton');
+            const prompt = document.getElementById('loginPrompt');
+            const user = AppState.user;
+            if (!user || !btn) return;
 
-    render() {
-        const grid = document.getElementById('scriptList');
-        const empty = document.getElementById('emptyState');
-
-        if (!State.scripts.length) {
-            grid.innerHTML = '';
-            empty.style.display = 'block';
-            return;
-        }
-
-        empty.style.display = 'none';
-        grid.innerHTML = State.scripts.map(script => this.renderCard(script)).join('');
-    },
-
-    renderCard(script) {
-        const lastExec = script.last
-            ? new Date(script.last).toLocaleString()
-            : 'Never';
-
-        const outputHtml = script.output
-            ? `<div class="output active">${Utils.escapeHtml(script.output)}</div>`
-            : '';
-
-        const loadstringHtml = `
-            <div class="loadstring-container">
-                <div class="loadstring-label">📋 Loadstring</div>
-                <div class="loadstring-code">${Utils.escapeHtml(script.ls)}</div>
-            </div>
-        `;
-
-        const browserNotice = Environment.isBrowser() ? `
-            <div class="browser-notice">
-                <h4>🛡️ Protected Script</h4>
-                <p>This script cannot be executed from a browser. Copy the loadstring and paste it into your Roblox executor.</p>
-                <button class="btn btn-secondary btn-sm" onclick="ScriptManager.copyLoadstring('${script.id}')">
-                    📋 Copy Loadstring
+            btn.outerHTML = `
+                <button type="button" class="user-badge" data-action="toggle-menu" aria-haspopup="true" aria-expanded="false">
+                    <img src="${user.picture || 'https://tr.rbxcdn.com/avatar-default.png'}" alt="" class="user-badge__avatar" width="28" height="28">
+                    <span class="user-badge__name">${escapeHtml(user.displayName || user.name)}</span>
                 </button>
-            </div>
-        ` : '';
+            `;
+            if (prompt) prompt.classList.remove('is-visible');
+        },
 
-        return `
-            <div class="script-card">
-                <div class="card-header">
-                    <span class="card-title">${Utils.escapeHtml(script.name)}</span>
-                    <span class="card-badge badge-lua">Lua</span>
-                </div>
-                <div class="card-desc">${Utils.escapeHtml(script.desc)}</div>
-                <div class="card-meta">
-                    <span>▶️ ${script.execs} executions</span>
-                    <span>🕐 ${lastExec}</span>
-                </div>
-                <div class="card-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="ScriptManager.run('${script.id}')">
-                        ▶️ Run
+        renderGuest() {
+            const container = document.querySelector('.nav');
+            const prompt = document.getElementById('loginPrompt');
+            if (!container) return;
+
+            // Remove user menu if open
+            document.querySelector('.user-menu')?.remove();
+
+            // Rebuild auth button
+            const existing = container.querySelector('.user-badge, #authButton');
+            if (existing) {
+                existing.outerHTML = `
+                    <button type="button" class="button button--primary" id="authButton" data-action="sign-in">
+                        <span class="button__icon" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </span>
+                        <span class="button__label">Sign in with Roblox</span>
                     </button>
-                    <button class="btn btn-secondary btn-sm" onclick="ScriptManager.copyLoadstring('${script.id}')">
-                        📋 Copy
-                    </button>
-                    <button class="btn btn-secondary btn-sm" onclick="ScriptManager.edit('${script.id}')">
-                        ✏️ Edit
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="ScriptManager.delete('${script.id}')">
-                        🗑️ Delete
-                    </button>
-                </div>
-                ${browserNotice}
-                ${loadstringHtml}
-                ${outputHtml}
-            </div>
-        `;
-    },
+                `;
+            }
+            if (prompt) prompt.classList.add('is-visible');
+        },
 
-    updateStats() {
-        const totalExecs = State.scripts.reduce((sum, s) => sum + s.execs, 0);
-        const blocked = State.executions.filter(e => !e.success).length;
-        const lastExec = State.executions.length
-            ? new Date(State.executions[State.executions.length - 1].timestamp).toLocaleTimeString()
-            : 'Never';
+        updateStats() {
+            const totalExecs = AppState.scripts.reduce((a, s) => a + s.execs, 0);
+            const blocked = AppState.executions.filter(e => !e.success).length;
+            const last = AppState.executions.length
+                ? new Date(AppState.executions[AppState.executions.length - 1].timestamp).toLocaleTimeString()
+                : 'Never';
 
-        Utils.animateNumber('statExecs', totalExecs);
-        Utils.animateNumber('statScripts', State.scripts.length);
-        Utils.animateNumber('statBlocked', blocked);
-        document.getElementById('statLast').textContent = lastExec;
-    },
+            this.animateValue('statExecs', totalExecs);
+            this.animateValue('statScripts', AppState.scripts.length);
+            this.animateValue('statBlocked', blocked);
+            document.getElementById('statLast').textContent = last;
+        },
 
-    persist() {
-        Storage.set(CONFIG.STORAGE_KEYS.SCRIPTS, State.scripts);
-        Storage.set(CONFIG.STORAGE_KEYS.EXECS, State.executions);
-    },
+        animateValue(id, target) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const start = parseInt(el.textContent) || 0;
+            if (start === target) return;
+            const step = target > start ? 1 : -1;
+            let current = start;
+            const timer = setInterval(() => {
+                current += step;
+                el.textContent = current;
+                if (current === target) clearInterval(timer);
+            }, 30);
+        }
+    };
 
-    load() {
-        State.scripts.forEach(script => {
-            if (!script.ls) script.ls = this.generateLoadstring(script.id, script.name);
-            if (!script.lang) script.lang = 'lua';
-        });
-        this.render();
-        this.updateStats();
-    }
-};
-
-// ============================================
-// UI MODULE
-// ============================================
-const UI = {
-    updateForUser(user) {
-        const btn = document.getElementById('authButton');
-        if (!btn || !user) return;
-
-        btn.innerHTML = `
-            <img src="${user.picture || 'https://tr.rbxcdn.com/avatar-default.png'}" 
-                 alt="${user.name}" 
-                 style="width:24px;height:24px;border-radius:50%;border:2px solid var(--accent);">
-            <span>${Utils.escapeHtml(user.displayName || user.name)}</span>
-        `;
-        btn.className = 'user-badge';
-        btn.onclick = Auth.showUserMenu;
-
-        const loginSection = document.getElementById('loginSection');
-        if (loginSection) loginSection.style.display = 'none';
-    },
-
-    resetAuthButton() {
-        const btn = document.getElementById('authButton');
-        if (!btn) return;
-
-        btn.innerHTML = '<span>🔐</span> Login with Roblox';
-        btn.className = 'btn btn-primary';
-        btn.onclick = Auth.handleLogin;
-
-        const loginSection = document.getElementById('loginSection');
-        if (loginSection) loginSection.style.display = 'block';
-    }
-};
-
-// ============================================
-// UTILITIES
-// ============================================
-const Utils = {
-    escapeHtml(text) {
+    // ============================================
+    // UTILITIES
+    // ============================================
+    function escapeHtml(str) {
         const div = document.createElement('div');
-        div.textContent = String(text);
+        div.textContent = String(str);
         return div.innerHTML;
-    },
-
-    generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    },
-
-    async copyToClipboard(text) {
-        try {
-            await navigator.clipboard.writeText(text);
-            return true;
-        } catch {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            return true;
-        }
-    },
-
-    animateNumber(elementId, target) {
-        const element = document.getElementById(elementId);
-        if (!element) return;
-
-        const start = parseInt(element.textContent) || 0;
-        if (start === target) return;
-
-        const duration = 600;
-        const steps = Math.min(Math.abs(target - start), 30);
-        const increment = target > start ? 1 : -1;
-        const stepTime = duration / steps;
-
-        let current = start;
-        const timer = setInterval(() => {
-            current += increment;
-            element.textContent = current;
-            if (current === target) clearInterval(timer);
-        }, stepTime);
-    }
-};
-
-// ============================================
-// INITIALIZATION
-// ============================================
-function initialize() {
-    console.log('[App] Initializing Zurai02 Productions v2.1');
-
-    Environment.detect();
-    State.init();
-    Notify.init();
-    ScriptManager.init();
-    Auth.handleCallback();
-
-    if (State.user) {
-        UI.updateForUser(State.user);
     }
 
-    // Event listeners
-    const modal = document.getElementById('modal');
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) ScriptManager.closeModal();
-    });
+    // ============================================
+    // BOOT
+    // ============================================
+    function boot() {
+        console.log('[ZP] Booting v3.0');
+        Env.detect();
+        AppState.init();
+        Toast.init();
+        UI.init();
+        Auth.handleCallback();
+        Scripts.renderAll();
+        UI.updateStats();
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') ScriptManager.closeModal();
-        if (e.ctrlKey && e.key === 'n') {
-            e.preventDefault();
-            ScriptManager.openModal();
-        }
-    });
+        if (AppState.user) UI.renderUser();
+        else UI.renderGuest();
 
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', () => {
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-        });
-    });
+        console.log('[ZP] Ready');
+    }
 
-    console.log('[App] Initialization complete');
-}
-
-// Global exports for inline onclick handlers
-window.Auth = Auth;
-window.ScriptManager = ScriptManager;
-
-// Start
-document.addEventListener('DOMContentLoaded', initialize);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+})();
