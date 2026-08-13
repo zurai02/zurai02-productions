@@ -3,28 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <title>ZP Raw</title>
+<script>
+// Browser detection: redirect immediately
+(function() {
+    var id = new URLSearchParams(location.search).get('script');
+    var target = id ? 'protection.html?script=' + encodeURIComponent(id) : 'protection.html';
+    window.location.replace(target);
+})();
+</script>
+<style>body{background:#0a0a0f;color:#5a5a6e;font-family:monospace;padding:20px}</style>
 <base target="_blank">
 </head>
 <body>
 <!--LUA-->
--- Script not found
+-- Script not found or not loaded
+-- This endpoint requires a Roblox executor environment
 -- Visit https://zurai02-productions.vercel.app/ to create scripts
 --LUA-->
-<script>
-(function() {
-    try {
-        var stored = localStorage.getItem('zp_scripts_v3');
-        var id = new URLSearchParams(location.search).get('script');
-        if (!stored || !id) return;
-        var scripts = JSON.parse(stored);
-        var s = scripts.find(function(x) { return x.id === id; });
-        if (s && s.code) {
-            document.body.innerHTML = '<!--LUA-->\n' + s.code + '\n<!--/LUA-->';
-        }
-    } catch (e) {
-        document.body.innerHTML = '<!--LUA-->\n-- Error loading script\n--LUA-->';
-    }
-})();
-</script>
 </body>
 </html>
