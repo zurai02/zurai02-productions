@@ -39,6 +39,7 @@ p.sub{color:#555588;font-size:16px;line-height:1.6;max-width:480px;margin:0 auto
 @media(max-width:600px){h1{font-size:28px}.shield{width:72px;height:72px;font-size:36px}}
 </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 <div class="container">
@@ -78,11 +79,17 @@ p.sub{color:#555588;font-size:16px;line-height:1.6;max-width:480px;margin:0 auto
 
 <script>
 function genLs(id, name) {
-    var base = window.location.origin + '/';
-    return '-- Zurai02 Productions | ' + name + '
-local _c=game:HttpGet("' + base + 'raw.html?script=' + id + '",true)
-local _s=_c:match("<!--LUA-->(.-)<!--/LUA-->")
-if _s then loadstring(_s)() else warn("Zurai02: Script not found") end';
+    var base = window.location.origin + window.location.pathname;
+    // Remove 'protection.html' from base to get root
+    base = base.replace('protection.html', '');
+    return "-- Zurai02 Productions | " + name + "\n" +
+           "local _c = game:HttpGet(\"" + base + "index.html?script=" + id + "\", true)\n" +
+           "local _s = _c:match("<!%-%-LUA%-%->(.-)<!%/LUA%>")\n" +
+           "if _s then\n" +
+           "    loadstring(_s)()\n" +
+           "else\n" +
+           "    warn("Zurai02: Script not found")\n" +
+           "end";
 }
 
 function esc(t) {
