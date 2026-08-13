@@ -1,27 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Zurai02 Raw</title>
+<title>ZP Raw</title>
 <base target="_blank">
 </head>
 <body>
 <!--LUA-->
--- Script not found or not loaded
--- Visit https://zurai02.is-a.dev to create scripts
+-- Script not found
+-- Visit https://zurai02-productions.vercel.app/ to create scripts
 --LUA-->
 <script>
-(function(){
+(function() {
     try {
-        var stored = localStorage.getItem('zp_scripts');
-        var params = new URLSearchParams(window.location.search);
-        var scriptId = params.get('script');
-        if (stored && scriptId) {
-            var scripts = JSON.parse(stored);
-            var script = scripts.find(function(s){ return s.id === scriptId; });
-            if (script && script.code) {
-                document.body.innerHTML = '<!--LUA-->\n' + script.code + '\n<!--/LUA-->';
-            }
+        var stored = localStorage.getItem('zp_scripts_v3');
+        var id = new URLSearchParams(location.search).get('script');
+        if (!stored || !id) return;
+        var scripts = JSON.parse(stored);
+        var s = scripts.find(function(x) { return x.id === id; });
+        if (s && s.code) {
+            document.body.innerHTML = '<!--LUA-->\n' + s.code + '\n<!--/LUA-->';
         }
     } catch (e) {
         document.body.innerHTML = '<!--LUA-->\n-- Error loading script\n--LUA-->';
