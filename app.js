@@ -1,7 +1,6 @@
 /**
- * Zurai02 Productions - Script Hub
- * Professional Roblox Script Management System
- * @version 2.0.0
+ * Zurai02 Productions - Script Hub v2.1
+ * Fixed OAuth 2.0 Implementation
  */
 
 'use strict';
@@ -12,7 +11,7 @@
 const CONFIG = Object.freeze({
     CLIENT_ID: '3255755288279625071',
     REDIRECT_URI: 'https://zurai02.github.io/zurai02-productions/index.html',
-    OAUTH_BASE: 'https://authorize.roblox.com/',
+    OAUTH_BASE: 'https://apis.roblox.com/oauth/v1/authorize',
     TOKEN_URL: 'https://apis.roblox.com/oauth/v1/token',
     USERINFO_URL: 'https://apis.roblox.com/oauth/v1/userinfo',
     SCOPE: 'openid profile',
@@ -22,7 +21,8 @@ const CONFIG = Object.freeze({
         USER: 'zurai_user',
         ACCESS_TOKEN: 'roblox_access_token',
         REFRESH_TOKEN: 'roblox_refresh_token',
-        OAUTH_STATE: 'oauth_state'
+        OAUTH_STATE: 'oauth_state',
+        PKCE_VERIFIER: 'pkce_verifier'
     })
 });
 
@@ -51,6 +51,7 @@ const State = {
         Storage.remove(CONFIG.STORAGE_KEYS.USER);
         Storage.remove(CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
         Storage.remove(CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+        Storage.remove(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
     }
 };
 
@@ -79,7 +80,7 @@ const Storage = {
     remove(key) {
         try {
             localStorage.removeItem(key);
-        } catch { /* ignore */ }
+        } catch { }
     }
 };
 
@@ -135,17 +136,50 @@ const Notify = {
 };
 
 // ============================================
+// PKCE UTILITIES (Required for public clients)
+// ============================================
+const PKCE = {
+    generateVerifier() {
+        const array = new Uint8Array(32);
+        crypto.getRandomValues(array);
+        return btoa(String.fromCharCode(...array))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+    },
+
+    async generateChallenge(verifier) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(verifier);
+        const digest = await crypto.subtle.digest('SHA-256', data);
+        return btoa(String.fromCharCode(...new Uint8Array(digest)))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+    }
+};
+
+// ============================================
 // AUTHENTICATION MODULE
 // ============================================
 const Auth = {
     async exchangeCode(code) {
         try {
+            const pkceVerifier = Storage.get(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
+
             const params = new URLSearchParams({
                 grant_type: 'authorization_code',
-                code,
+                code: code,
                 redirect_uri: CONFIG.REDIRECT_URI,
                 client_id: CONFIG.CLIENT_ID
             });
+
+            // Add PKCE verifier if available
+            if (pkceVerifier) {
+                params.append('code_verifier', pkceVerifier);
+            }
+
+            console.log('[Auth] Token request params:', params.toString());
 
             const response = await fetch(CONFIG.TOKEN_URL, {
                 method: 'POST',
@@ -155,7 +189,8 @@ const Auth = {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Token exchange failed: ${response.status}`);
+                console.error('[Auth] Token error response:', errorText);
+                throw new Error(`Token exchange failed: ${response.status} - ${errorText}`);
             }
 
             const data = await response.json();
@@ -237,25 +272,41 @@ const Auth = {
     generateState() {
         const array = new Uint8Array(16);
         crypto.getRandomValues(array);
-        const state = btoa(String.fromCharCode(...array)).slice(0, 32);
-        sessionStorage.setItem(CONFIG.STORAGE_KEYS.OAUTH_STATE, state);
-        return state;
+        return btoa(String.fromCharCode(...array))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '')
+            .substring(0, 32);
     },
 
-    buildOAuthUrl() {
+    async buildOAuthUrl() {
         const state = this.generateState();
+        sessionStorage.setItem(CONFIG.STORAGE_KEYS.OAUTH_STATE, state);
+
+        // Generate PKCE
+        const verifier = PKCE.generateVerifier();
+        const challenge = await PKCE.generateChallenge(verifier);
+        Storage.set(CONFIG.STORAGE_KEYS.PKCE_VERIFIER, verifier);
+
         const params = new URLSearchParams({
             client_id: CONFIG.CLIENT_ID,
             redirect_uri: CONFIG.REDIRECT_URI,
             scope: CONFIG.SCOPE,
             response_type: 'code',
-            state
+            state: state,
+            code_challenge: challenge,
+            code_challenge_method: 'S256'
         });
-        return `${CONFIG.OAUTH_BASE}?${params.toString()}`;
+
+        const url = `${CONFIG.OAUTH_BASE}?${params.toString()}`;
+        console.log('[Auth] Authorization URL:', url);
+        return url;
     },
 
-    handleLogin() {
-        window.location.href = this.buildOAuthUrl();
+    async handleLogin() {
+        const url = await this.buildOAuthUrl();
+        console.log('[Auth] Redirecting to:', url);
+        window.location.href = url;
     },
 
     handleCallback() {
@@ -265,6 +316,8 @@ const Auth = {
         const error = urlParams.get('error');
         const errorDesc = urlParams.get('error_description');
 
+        console.log('[Auth] Callback params:', { code: !!code, state, error, errorDesc });
+
         if (error) {
             console.error('[Auth] OAuth error:', error, errorDesc);
             Notify.show(`Login failed: ${errorDesc || error}`, 'error');
@@ -273,6 +326,8 @@ const Auth = {
 
         if (code && state) {
             const savedState = sessionStorage.getItem(CONFIG.STORAGE_KEYS.OAUTH_STATE);
+            console.log('[Auth] State validation:', { received: state, saved: savedState });
+
             if (state !== savedState) {
                 Notify.show('Security check failed. Invalid state.', 'error');
                 return;
@@ -706,6 +761,8 @@ const Utils = {
 // INITIALIZATION
 // ============================================
 function initialize() {
+    console.log('[App] Initializing Zurai02 Productions v2.1');
+
     Environment.detect();
     State.init();
     Notify.init();
@@ -736,6 +793,8 @@ function initialize() {
             link.classList.add('active');
         });
     });
+
+    console.log('[App] Initialization complete');
 }
 
 // Global exports for inline onclick handlers
