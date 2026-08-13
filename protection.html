@@ -4,375 +4,334 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Protected — Zurai02 Productions</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-    --bg: #07070f;
-    --bg-card: #11111a;
-    --border: #1a1a2e;
-    --text: #d4d4e8;
-    --text-muted: #555588;
-    --accent: #8b5cf6;
-    --success: #10b981;
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2a;
+    --text: #e8e8f0;
+    --text-secondary: #8f8fa3;
+    --text-muted: #5a5a6e;
+    --accent: #6366f1;
+    --success: #22c55e;
     --error: #ef4444;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font);
     background: var(--bg);
     color: var(--text);
-    min-height: 100vh;
-    padding: 40px 20px;
     line-height: 1.6;
+    min-height: 100vh;
+    padding: 48px 24px;
 }
 
-.container { max-width: 900px; margin: 0 auto; }
+.container { max-width: 800px; margin: 0 auto; }
 
-.shield {
-    width: 96px;
-    height: 96px;
-    margin: 0 auto 28px;
-    background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(220,38,38,0.04));
-    border: 2px solid rgba(239,68,68,0.25);
+.status {
+    text-align: center;
+    margin-bottom: 48px;
+}
+
+.status__icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 40px;
-    animation: pulse 3s ease-in-out infinite;
 }
 
-@keyframes pulse {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.1); }
-    50% { transform: scale(1.03); box-shadow: 0 0 40px rgba(239,68,68,0.08); }
+.status__icon svg {
+    width: 28px;
+    height: 28px;
+    color: var(--error);
 }
 
-.header { text-align: center; margin-bottom: 48px; }
-
-h1 {
-    font-size: 2.5rem;
-    font-weight: 800;
-    margin-bottom: 12px;
-    background: linear-gradient(90deg, #f87171, #ef4444);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+.status__title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
 }
 
-.subtitle {
-    color: var(--text-muted);
-    font-size: 1rem;
-    max-width: 440px;
+.status__text {
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+    max-width: 400px;
     margin: 0 auto;
-    line-height: 1.6;
 }
+
+.script-list { margin-bottom: 40px; }
 
 .card {
-    background: linear-gradient(135deg, var(--bg-card), #0d0d1f);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 16px;
-    transition: 0.25s ease;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 12px;
 }
 
-.card:hover { border-color: rgba(139,92,246,0.15); }
-
-.card-head {
+.card__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
-.card-name {
-    font-size: 1.0625rem;
-    font-weight: 700;
-    color: #e8e8ff;
+.card__title {
+    font-size: 1rem;
+    font-weight: 600;
 }
 
-.card-lang {
-    background: rgba(16,185,129,0.1);
-    color: #34d399;
-    padding: 3px 10px;
-    border-radius: 20px;
+.card__badge {
     font-size: 0.625rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: rgba(34,197,94,0.1);
+    color: var(--success);
 }
 
-.card-desc {
-    color: var(--text-muted);
+.card__desc {
+    color: var(--text-secondary);
     font-size: 0.8125rem;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 }
 
-.loadstring-box {
-    background: #0a0a14;
-    border: 1.5px solid rgba(139,92,246,0.15);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 14px;
+.code-block {
+    background: #08080c;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    margin-bottom: 12px;
 }
 
-.loadstring-box label {
-    display: block;
+.code-block__label {
     font-size: 0.625rem;
-    color: #444466;
-    margin-bottom: 8px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
 }
 
-.loadstring-text {
-    font-family: 'JetBrains Mono', monospace;
+.code-block__code {
+    font-family: var(--font-mono);
     font-size: 0.6875rem;
-    color: #a78bfa;
-    background: #07070f;
-    padding: 12px;
-    border-radius: 8px;
-    word-break: break-all;
-    border: 1px solid rgba(255,255,255,0.04);
-    line-height: 1.7;
+    color: var(--text-secondary);
     white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.7;
 }
 
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 12px 24px;
-    background: linear-gradient(135deg, #10b981, #059669);
+    gap: 6px;
+    padding: 10px 18px;
+    background: var(--success);
     color: #fff;
     border: none;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: 0.2s ease;
-    box-shadow: 0 4px 15px rgba(16,185,129,0.2);
+    border-radius: 6px;
     font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
     width: 100%;
+    transition: opacity 0.15s ease;
 }
 
-.btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(16,185,129,0.3);
+.btn:hover { opacity: 0.9; }
+
+.guide {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px;
 }
 
-.steps {
-    background: linear-gradient(135deg, var(--bg-card), #0d0d1f);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 16px;
-    padding: 32px;
-    margin-top: 32px;
-}
-
-.steps h2 {
-    font-size: 1.125rem;
-    font-weight: 800;
-    margin-bottom: 24px;
-    color: #e8e8ff;
+.guide__title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 20px;
 }
 
 .step {
     display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    margin-bottom: 20px;
+    gap: 14px;
+    margin-bottom: 16px;
 }
 
 .step:last-child { margin-bottom: 0; }
 
-.step-num {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, #7c3aed, #a855f7);
+.step__num {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    color: #fff;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 800;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
     flex-shrink: 0;
 }
 
-.step-content h3 {
+.step__title {
     font-size: 0.9375rem;
-    font-weight: 700;
-    margin-bottom: 4px;
-    color: #e8e8ff;
+    font-weight: 600;
+    margin-bottom: 2px;
 }
 
-.step-content p {
+.step__text {
+    color: var(--text-secondary);
     font-size: 0.8125rem;
-    color: var(--text-muted);
-    line-height: 1.5;
 }
 
 .empty {
     text-align: center;
-    padding: 60px 20px;
-    color: #333355;
+    padding: 48px;
+    color: var(--text-muted);
 }
 
-.empty .icon {
-    font-size: 3rem;
-    margin-bottom: 16px;
-    opacity: 0.5;
+.empty__title {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 4px;
 }
 
-.empty h3 {
-    font-size: 1.125rem;
-    color: #555577;
-    margin-bottom: 6px;
-}
-
-.footer {
-    margin-top: 48px;
-    text-align: center;
-    color: #222244;
+.empty__text {
     font-size: 0.8125rem;
-    font-weight: 500;
 }
 
 .toast {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: linear-gradient(135deg, var(--bg-card), #0d0d1f);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 14px;
-    padding: 14px 20px;
-    min-width: 280px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    animation: slide 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    bottom: 20px;
+    right: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-left: 3px solid var(--success);
-    color: #e8e8ff;
-    font-weight: 600;
-    font-size: 0.875rem;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    animation: slideIn 0.25s ease;
 }
 
-@keyframes slide {
-    from { transform: translateX(120%); opacity: 0; }
+@keyframes slideIn {
+    from { transform: translateX(100px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
 }
 
-@media (max-width: 600px) {
-    h1 { font-size: 1.75rem; }
-    .shield { width: 72px; height: 72px; font-size: 32px; }
+.footer {
+    text-align: center;
+    margin-top: 40px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
 }
 </style>
 <base target="_blank">
 </head>
 <body>
 <div class="container">
-    <div class="shield">🛡️</div>
-    <div class="header">
-        <h1>Script Protected</h1>
-        <p class="subtitle">This script hub is protected by Zurai02 Productions. Web browsers cannot execute scripts here.</p>
+    <div class="status">
+        <div class="status__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h1 class="status__title">Script Protected</h1>
+        <p class="status__text">This script hub is protected. Web browsers cannot execute scripts here.</p>
     </div>
-    <div id="scriptsList"></div>
-    <div class="steps">
-        <h2>How to Execute</h2>
+    <div class="script-list" id="scriptList"></div>
+    <div class="guide">
+        <h2 class="guide__title">How to Execute</h2>
         <div class="step">
-            <div class="step-num">1</div>
-            <div class="step-content">
-                <h3>Copy a loadstring</h3>
-                <p>Click the green Copy button on any script above.</p>
+            <span class="step__num">1</span>
+            <div>
+                <div class="step__title">Copy Loadstring</div>
+                <p class="step__text">Click the copy button on any script above.</p>
             </div>
         </div>
         <div class="step">
-            <div class="step-num">2</div>
-            <div class="step-content">
-                <h3>Open your Roblox executor</h3>
-                <p>Synapse X, KRNL, Fluxus, Electron, or any compatible executor.</p>
+            <span class="step__num">2</span>
+            <div>
+                <div class="step__title">Open Executor</div>
+                <p class="step__text">Launch Synapse X, KRNL, Fluxus, or any compatible executor.</p>
             </div>
         </div>
         <div class="step">
-            <div class="step-num">3</div>
-            <div class="step-content">
-                <h3>Paste and run</h3>
-                <p>Paste the loadstring into the executor's script box and execute.</p>
+            <span class="step__num">3</span>
+            <div>
+                <div class="step__title">Paste and Run</div>
+                <p class="step__text">Paste the loadstring into the executor and execute.</p>
             </div>
         </div>
     </div>
-    <div class="footer">© 2026 Zurai02 Productions — All scripts are protected.</div>
+    <div class="footer">2026 Zurai02 Productions. All rights reserved.</div>
 </div>
 <div id="toastContainer"></div>
 
 <script>
 (function() {
-    function generateLoadstring(id, name) {
-        var base = window.location.origin + window.location.pathname;
-        base = base.replace('protection.html', '');
-        return "-- Zurai02 Productions | " + name + "\n" +
-               "local _c = game:HttpGet(\"" + base + "raw.html?script=" + id + "\", true)\n" +
-               "local _s = _c:match("<!%-%-LUA%-%->(.-)<!%/LUA%>")\n" +
-               "if _s then\n" +
-               "    loadstring(_s)()\n" +
-               "else\n" +
-               "    warn("Zurai02: Script not found")\n" +
-               "end";
+    function generateLs(id, name) {
+        return 'local _c = game:HttpGet("https://zurai02-productions.vercel.app/raw.html?script=' + id + '", true)\n' +
+               'local _s = _c:match("<!%-%-LUA%-%->(.-)<!%/LUA%>")\n' +
+               'if _s then loadstring(_s)() else warn("Zurai02: Script not found") end';
     }
 
-    function escapeHtml(text) {
-        var div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    function esc(t) {
+        var d = document.createElement('div');
+        d.textContent = t;
+        return d.innerHTML;
     }
 
-    function loadScripts() {
-        var container = document.getElementById('scriptsList');
-        var stored = localStorage.getItem('zp_scripts');
+    function load() {
+        var c = document.getElementById('scriptList');
+        var stored = localStorage.getItem('zp_scripts_v3');
         if (!stored) {
-            container.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No scripts saved yet</h3><p>Scripts will appear here once they are created from the dashboard.</p></div>';
+            c.innerHTML = '<div class="empty"><div class="empty__title">No scripts</div><p class="empty__text">Scripts appear here once created from the dashboard.</p></div>';
             return;
         }
         var scripts = JSON.parse(stored);
         if (!scripts.length) {
-            container.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No scripts saved yet</h3><p>Scripts will appear here once they are created from the dashboard.</p></div>';
+            c.innerHTML = '<div class="empty"><div class="empty__title">No scripts</div><p class="empty__text">Scripts appear here once created from the dashboard.</p></div>';
             return;
         }
-        container.innerHTML = scripts.map(function(s) {
-            var ls = generateLoadstring(s.id, s.name);
+        c.innerHTML = scripts.map(function(s) {
+            var ls = generateLs(s.id, s.name);
             return '<div class="card">' +
-                '<div class="card-head"><div class="card-name">' + escapeHtml(s.name) + '</div><div class="card-lang">Lua</div></div>' +
-                '<div class="card-desc">' + escapeHtml(s.desc) + '</div>' +
-                '<div class="loadstring-box"><label>Loadstring</label><div class="loadstring-text">' + escapeHtml(ls) + '</div></div>' +
-                '<button class="btn" onclick="copyLoadstring(this,\'' + s.id + '\')">📋 Copy Loadstring</button>' +
+                '<div class="card__header"><span class="card__title">' + esc(s.name) + '</span><span class="card__badge">Lua</span></div>' +
+                '<p class="card__desc">' + esc(s.desc) + '</p>' +
+                '<div class="code-block"><div class="code-block__label">Loadstring</div><code class="code-block__code">' + esc(ls) + '</code></div>' +
+                '<button class="btn" onclick="copy(this,\'' + s.id + '\')">Copy Loadstring</button>' +
                 '</div>';
         }).join('');
     }
 
-    window.copyLoadstring = function(btn, id) {
-        var stored = localStorage.getItem('zp_scripts');
+    window.copy = function(btn, id) {
+        var stored = localStorage.getItem('zp_scripts_v3');
         if (!stored) return;
         var scripts = JSON.parse(stored);
         var s = scripts.find(function(x) { return x.id === id; });
         if (!s) return;
-        var ls = generateLoadstring(s.id, s.name);
-
-        function showToast(msg) {
-            var c = document.getElementById('toastContainer');
-            var t = document.createElement('div');
-            t.className = 'toast';
-            t.textContent = msg;
-            c.appendChild(t);
-            setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 3500);
-        }
-
+        var ls = generateLs(s.id, s.name);
         navigator.clipboard.writeText(ls).then(function() {
-            showToast('✅ Copied! Paste in your executor.');
-            btn.textContent = '✅ Copied!';
-            setTimeout(function() { btn.textContent = '📋 Copy Loadstring'; }, 2000);
+            show('Copied to clipboard');
+            btn.textContent = 'Copied';
+            setTimeout(function() { btn.textContent = 'Copy Loadstring'; }, 2000);
         }).catch(function() {
             var ta = document.createElement('textarea');
             ta.value = ls;
@@ -380,132 +339,21 @@ h1 {
             ta.select();
             document.execCommand('copy');
             document.body.removeChild(ta);
-            showToast('✅ Copied! Paste in your executor.');
-            btn.textContent = '✅ Copied!';
-            setTimeout(function() { btn.textContent = '📋 Copy Loadstring'; }, 2000);
+            show('Copied to clipboard');
         });
     };
 
-    loadScripts();
+    function show(msg) {
+        var c = document.getElementById('toastContainer');
+        var t = document.createElement('div');
+        t.className = 'toast';
+        t.textContent = msg;
+        c.appendChild(t);
+        setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 200); }, 3000);
+    }
+
+    load();
 })();
-</script>
-</body>
-</html>.toast{position:fixed;bottom:24px;right:24px;background:linear-gradient(135deg,#11112a,#0d0d1f);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px 20px;min-width:280px;display:flex;align-items:center;gap:10px;animation:slide .35s cubic-bezier(.16,1,.3,1);border-left:4px solid #10b981;color:#e8e8ff;font-weight:600}
-@keyframes slide{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
-@media(max-width:600px){h1{font-size:28px}.shield{width:72px;height:72px;font-size:36px}}
-</style>
-<base target="_blank">
-<base target="_blank">
-</head>
-<body>
-<div class="container">
-<div class="shield">🛡️</div>
-<div class="header">
-<h1>Script Protected</h1>
-<p class="sub">This script hub is protected by Zurai02 Productions.<br>Web browsers cannot execute scripts here.</p>
-</div>
-<div id="scriptsList"></div>
-<div class="steps">
-<h2>How to Execute</h2>
-<div class="step">
-<div class="step-num">1</div>
-<div class="step-content">
-<h3>Copy a loadstring</h3>
-<p>Click the green Copy button on any script above.</p>
-</div>
-</div>
-<div class="step">
-<div class="step-num">2</div>
-<div class="step-content">
-<h3>Open your Roblox executor</h3>
-<p>Synapse X, KRNL, Fluxus, Electron, or any compatible executor.</p>
-</div>
-</div>
-<div class="step">
-<div class="step-num">3</div>
-<div class="step-content">
-<h3>Paste and run</h3>
-<p>Paste the loadstring into the executor's script box and execute.</p>
-</div>
-</div>
-</div>
-<div class="footer">© 2026 Zurai02 Productions — All scripts are protected.</div>
-</div>
-<div id="toastContainer"></div>
-
-<script>
-function genLs(id, name) {
-    var base = window.location.origin + window.location.pathname;
-    // Remove 'protection.html' from base to get root
-    base = base.replace('protection.html', '');
-    return "-- Zurai02 Productions | " + name + "\n" +
-           "local _c = game:HttpGet(\"" + base + "index.html?script=" + id + "\", true)\n" +
-           "local _s = _c:match("<!%-%-LUA%-%->(.-)<!%/LUA%>")\n" +
-           "if _s then\n" +
-           "    loadstring(_s)()\n" +
-           "else\n" +
-           "    warn("Zurai02: Script not found")\n" +
-           "end";
-}
-
-function esc(t) {
-    var d = document.createElement('div');
-    d.textContent = t;
-    return d.innerHTML;
-}
-
-function loadScripts() {
-    var container = document.getElementById('scriptsList');
-    var stored = localStorage.getItem('zp_scripts');
-    if (!stored) {
-        container.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No scripts saved yet</h3><p>Scripts will appear here once they are created from the dashboard.</p></div>';
-        return;
-    }
-    var scripts = JSON.parse(stored);
-    if (!scripts.length) {
-        container.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No scripts saved yet</h3><p>Scripts will appear here once they are created from the dashboard.</p></div>';
-        return;
-    }
-    container.innerHTML = scripts.map(function(s) {
-        var ls = genLs(s.id, s.name);
-        return '<div class="card"><div class="card-head"><div class="card-name">' + esc(s.name) + '</div><div class="card-lang">Lua</div></div><div class="card-desc">' + esc(s.desc) + '</div><div class="loadstring-box"><label>📋 Loadstring</label><div class="loadstring-text">' + esc(ls) + '</div></div><button class="btn btn-full" onclick="copyLs(this,'' + s.id + '')">📋 Copy Loadstring</button></div>';
-    }).join('');
-}
-
-function copyLs(btn, id) {
-    var stored = localStorage.getItem('zp_scripts');
-    if (!stored) return;
-    var scripts = JSON.parse(stored);
-    var s = scripts.find(function(x) { return x.id === id; });
-    if (!s) return;
-    var ls = genLs(s.id, s.name);
-    navigator.clipboard.writeText(ls).then(function() {
-        showToast('✅ Copied! Paste in your executor.');
-        btn.textContent = '✅ Copied!';
-        setTimeout(function() { btn.textContent = '📋 Copy Loadstring'; }, 2000);
-    }).catch(function() {
-        var ta = document.createElement('textarea');
-        ta.value = ls;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showToast('✅ Copied! Paste in your executor.');
-        btn.textContent = '✅ Copied!';
-        setTimeout(function() { btn.textContent = '📋 Copy Loadstring'; }, 2000);
-    });
-}
-
-function showToast(msg) {
-    var c = document.getElementById('toastContainer');
-    var t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = msg;
-    c.appendChild(t);
-    setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 3500);
-}
-
-loadScripts();
 </script>
 </body>
 </html>
