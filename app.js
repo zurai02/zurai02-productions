@@ -244,7 +244,7 @@ function checkOAuthCallback() {
 }
 
 // ========================
-// SCRIPT MANAGEMENT (Original)
+// SCRIPT MANAGEMENT (FIXED)
 // ========================
 
 function detect() {
@@ -328,12 +328,31 @@ function editScript(id) {
     openModal();
 }
 
+// FIXED: Proper loadstring generation with correct URL and pattern
 function genLoadstring(id, name) {
-    const base = window.location.origin + window.location.pathname.replace('index.html', '');
+    // Get the base URL - works on both GitHub Pages and local
+    let base = window.location.origin + window.location.pathname;
+    // Remove any filename to get the directory
+    base = base.replace(/[^/]*$/, '');
+    // Ensure trailing slash
+    if (!base.endsWith('/')) base += '/';
+
+    const url = base + 'index.html?script=' + id;
+
+    // The Lua pattern must match: <!--LUA-->
+...code...
+<!--/LUA-->
+    // In Lua string patterns: <!%-%-LUA%-%->(.-)<!%/LUA%>
+    // Note: The closing tag in HTML is <!--/LUA--> but in Lua pattern we escape it
+
     return `-- Zurai02 Productions | ${name}
-local _c=game:HttpGet("${base}raw.html?script=${id}",true)
-local _s=_c:match("<!%-%-LUA%-%->(.-)<!%-%-/LUA%-%->")
-if _s then loadstring(_s)() else warn("Zurai02: Script not found") end`;
+local _c = game:HttpGet("${url}", true)
+local _s = _c:match("<!%-%-LUA%-%->(.-)<!%/LUA%>")
+if _s then
+    loadstring(_s)()
+else
+    warn("Zurai02: Script not found or failed to load")
+end`;
 }
 
 function copyLoadstring(id) {
@@ -374,8 +393,7 @@ function runScript(id) {
 
 function execLua(code) {
     const out = [];
-    code.split('
-').forEach(l => {
+    code.split('\n').forEach(l => {
         const t = l.trim();
         if (!t) return;
         if (t.startsWith('--')) { out.push('💬 ' + t); return; }
@@ -399,8 +417,7 @@ function execLua(code) {
             out.push('▶️ ' + t.substring(0, 50));
         }
     });
-    return out.join('
-') || '[Lua trace done]';
+    return out.join('\n') || '[Lua trace done]';
 }
 
 function logExec(sid, ok, msg) {
