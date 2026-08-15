@@ -1,15 +1,18 @@
 /**
  * Zurai02 Productions — API Server
  * Express.js backend with MongoDB, JWT auth, Roblox OAuth
+ * v3.1.0
  */
 
 require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const fetch = require('node-fetch');
 const path = require('path');
+const crypto = require('crypto');
 
 const {
     connectDatabase,
@@ -52,7 +55,7 @@ const app = express();
 
 // Security middleware
 app.use(helmet({
-    contentSecurityPolicy: false, // Allow inline scripts for raw.html
+    contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false
 }));
 
@@ -66,37 +69,98 @@ app.use(cors({
 
 // Rate limiting
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // 100 requests per window
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' }
 });
 app.use('/api/', limiter);
+
+// Stricter rate limit for auth endpoints
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Too many authentication attempts.' }
+});
+app.use('/api/auth/', authLimiter);
 
 // Body parsing
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Static files (for raw.html endpoint)
+// Static files
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ============================================
+// PKCE STORE (Replace with Redis in production)
+// ============================================
+
+const pkceStore = new Map();
+
+function storePKCE(state, verifier) {
+    pkceStore.set(state, {
+        verifier,
+        expires: Date.now() + 10 * 60 * 1000
+    });
+}
+
+function getPKCE(state) {
+    const entry = pkceStore.get(state);
+    if (!entry) return null;
+    if (Date.now() > entry.expires) {
+        pkceStore.delete(state);
+        return null;
+    }
+    pkceStore.delete(state);
+    return entry.verifier;
+}
+
+// Cleanup old entries every 5 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [state, entry] of pkceStore) {
+        if (now > entry.expires) pkceStore.delete(state);
+    }
+}, 5 * 60 * 1000);
 
 // ============================================
 // AUTHENTICATION MIDDLEWARE
 // ============================================
 
 async function requireAuth(req, res, next) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Authentication required' });
-    }
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
 
-    const token = authHeader.slice(7);
-    const user = await getUserFromToken(token);
-    if (!user) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
-    }
+        const token = authHeader.slice(7);
+        const user = await getUserFromToken(token);
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid or expired token' });
+        }
 
-    req.user = user;
-    next();
+        req.user = user;
+        next();
+    } catch (err) {
+        console.error('[Auth] Middleware error:', err);
+        res.status(500).json({ error: 'Authentication check failed' });
+    }
+}
+
+// Optional auth — populates req.user if token present, doesn't reject
+async function optionalAuth(req, res, next) {
+    try {
+        const authHeader = req.headers.authorization;
+        if (authHeader?.startsWith('Bearer ')) {
+            const user = await getUserFromToken(authHeader.slice(7));
+            if (user) req.user = user;
+        }
+        next();
+    } catch {
+        next();
+    }
 }
 
 // ============================================
@@ -105,23 +169,18 @@ async function requireAuth(req, res, next) {
 
 /**
  * GET /api/auth/url
- * Returns the Roblox OAuth authorization URL
+ * Returns the Roblox OAuth authorization URL with PKCE
  */
-app.get('/api/auth/url', async (req, res) => {
+app.get('/api/auth/url', (req, res) => {
     try {
-        const state = require('crypto').randomBytes(16).toString('base64url');
-        const verifier = require('crypto').randomBytes(32).toString('base64url');
-        const challenge = require('crypto')
+        const state = crypto.randomBytes(16).toString('base64url');
+        const verifier = crypto.randomBytes(32).toString('base64url');
+        const challenge = crypto
             .createHash('sha256')
             .update(verifier)
             .digest('base64url');
 
-        // Store PKCE verifier temporarily (in production, use Redis)
-        global.pkceStore = global.pkceStore || new Map();
-        global.pkceStore.set(state, verifier);
-
-        // Clean up old entries after 10 minutes
-        setTimeout(() => global.pkceStore.delete(state), 10 * 60 * 1000);
+        storePKCE(state, verifier);
 
         const params = new URLSearchParams({
             client_id: ROBLOX_CONFIG.clientId,
@@ -153,12 +212,10 @@ app.post('/api/auth/callback', async (req, res) => {
             return res.status(400).json({ error: 'Missing code or state' });
         }
 
-        // Verify state and get PKCE verifier
-        const verifier = global.pkceStore?.get(state);
+        const verifier = getPKCE(state);
         if (!verifier) {
             return res.status(400).json({ error: 'Invalid or expired state' });
         }
-        global.pkceStore.delete(state);
 
         // Exchange code for token
         const tokenParams = new URLSearchParams({
@@ -195,7 +252,7 @@ app.post('/api/auth/callback', async (req, res) => {
 
         const userInfo = await userRes.json();
 
-        // Create or update user in database
+        // Create or update user
         const user = await findOrCreateUser({
             robloxId: userInfo.sub,
             username: userInfo.preferred_username || userInfo.name,
@@ -267,7 +324,7 @@ app.post('/api/auth/refresh', async (req, res) => {
  * GET /api/user/me
  * Returns current user info
  */
-app.get('/api/user/me', requireAuth, async (req, res) => {
+app.get('/api/user/me', requireAuth, (req, res) => {
     res.json({
         id: req.user.robloxId,
         name: req.user.username,
@@ -310,9 +367,17 @@ app.post('/api/scripts', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Name and code are required' });
         }
 
+        if (name.length > 100) {
+            return res.status(400).json({ error: 'Name must be under 100 characters' });
+        }
+
+        if (code.length > 50000) {
+            return res.status(400).json({ error: 'Code exceeds 50KB limit' });
+        }
+
         const script = await createScript(req.user.robloxId, {
-            name,
-            description,
+            name: name.trim(),
+            description: description?.trim(),
             code,
             language: language || 'lua'
         });
@@ -382,61 +447,69 @@ app.delete('/api/scripts/:id', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// RAW SCRIPT ENDPOINT (For Executors)
-# ============================================
+// RAW SCRIPT ENDPOINT (Executors Only)
+// ============================================
 
 /**
  * GET /api/raw/:id
- * Serves raw Lua code for executors
- * No authentication required — anyone with the ID can execute
+ * Serves raw Lua code for Roblox executors via game:HttpGet()
+ * Browsers are redirected to a protection page
+ * Executors bypass JS and read raw code between <!--LUA--> tags
  */
-app.get('/api/raw/:id', async (req, res) => {
+app.get('/api/raw/:id', optionalAuth, async (req, res) => {
     try {
         const script = await getScriptById(req.params.id);
 
         if (!script) {
-            return res.type('text/html').send(`<!DOCTYPE html>
-<html><body><!--LUA-->
--- Script not found
--- Visit https://zurai02-productions.vercel.app/ to create scripts
---/LUA--></body></html>`);
+            // Return valid Lua comment for executor — won't break scripts
+            return res.type('text/plain').send(`-- [Zurai02] Script not found
+-- ID: ${req.params.id}
+-- Visit https://zurai02-productions.vercel.app/ to create scripts`);
         }
 
-        // Log execution attempt
-        await logExecution({
+        // Log execution (async, don't block response)
+        logExecution({
             scriptId: script.id,
-            userId: null,
+            userId: req.user?.robloxId || null,
             success: true,
             message: 'Fetched via game:HttpGet',
             environment: 'executor',
-            ipHash: require('crypto').createHash('sha256').update(req.ip).digest('hex').slice(0, 16),
+            ipHash: crypto.createHash('sha256').update(req.ip).digest('hex').slice(0, 16),
             userAgent: req.headers['user-agent'] || 'unknown'
-        });
+        }).catch(err => console.error('[Raw] Log failed:', err));
 
-        // Increment execution count
-        await incrementExecutions(script.id);
+        // Increment execution count (fire and forget)
+        incrementExecutions(script.id).catch(() => {});
 
-        // Serve raw HTML with code between tags
+        // Check if request is from a browser vs executor
+        const userAgent = req.headers['user-agent'] || '';
+        const isExecutor = /Roblox|HttpGet|Executor|Synapse|Krnl|Fluxus|Oxygen/i.test(userAgent) 
+            || req.headers['x-executor'] 
+            || !userAgent; // Some executors send no UA
+
+        if (!isExecutor) {
+            // Browser — redirect to protection page
+            return res.redirect(`/protection.html?script=${encodeURIComponent(script.id)}`);
+        }
+
+        // Executor — serve raw code with minimal wrapper
+        // Executors read between <!--LUA--> and --/LUA-->
         const html = `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>ZP Raw</title>
-<script>window.location.replace('/protection.html?script=${script.id}');</script>
-</head><body><!--LUA-->
+<html><head><meta charset="UTF-8"></head><body><!--LUA-->
 ${script.code}
 --/LUA--></body></html>`;
 
         res.type('text/html').send(html);
+
     } catch (err) {
         console.error('[Raw] Serve error:', err);
-        res.type('text/html').send(`<!DOCTYPE html>
-<html><body><!--LUA-->
--- Error loading script
---/LUA--></body></html>`);
+        res.type('text/plain').send('-- [Zurai02] Error loading script');
     }
 });
 
 // ============================================
-# STATISTICS ROUTES
-# ============================================
+// STATISTICS ROUTES
+// ============================================
 
 /**
  * GET /api/stats
@@ -453,24 +526,29 @@ app.get('/api/stats', requireAuth, async (req, res) => {
 });
 
 // ============================================
-# HEALTH CHECK
-# ============================================
+// HEALTH CHECK
+// ============================================
 
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
-        version: '3.1.0'
+        version: '3.1.0',
+        uptime: process.uptime()
     });
 });
 
 // ============================================
-# ERROR HANDLING
-# ============================================
+// ERROR HANDLING
+// ============================================
 
 app.use((err, req, res, next) => {
-    console.error('[Server] Unhandled error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('[Server] Unhandled error:', err.stack || err);
+    res.status(err.status || 500).json({ 
+        error: process.env.NODE_ENV === 'production' 
+            ? 'Internal server error' 
+            : err.message 
+    });
 });
 
 app.use((req, res) => {
@@ -478,8 +556,8 @@ app.use((req, res) => {
 });
 
 // ============================================
-# STARTUP
-# ============================================
+// STARTUP
+// ============================================
 
 async function start() {
     console.log('[Server] Starting Zurai02 Productions API v3.1.0');
@@ -489,7 +567,6 @@ async function start() {
     const missing = required.filter(key => !process.env[key]);
     if (missing.length > 0) {
         console.error('[Server] Missing environment variables:', missing.join(', '));
-        console.error('[Server] Please check your .env file');
         process.exit(1);
     }
 
@@ -497,8 +574,10 @@ async function start() {
     if (process.env.MONGODB_URI) {
         const connected = await connectDatabase(process.env.MONGODB_URI);
         if (!connected) {
-            console.error('[Server] Database connection failed. Starting without persistence.');
+            console.error('[Server] Database connection failed. Exiting.');
+            process.exit(1);
         }
+        console.log('[Server] Database connected');
     } else {
         console.warn('[Server] No MONGODB_URI provided. Running without database persistence.');
     }
@@ -508,7 +587,11 @@ async function start() {
         console.log(`[Server] Listening on port ${PORT}`);
         console.log(`[Server] Frontend: ${FRONTEND_URL}`);
         console.log(`[Server] Base URL: ${BASE_URL}`);
+        console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 }
 
-start();
+start().catch(err => {
+    console.error('[Server] Fatal startup error:', err);
+    process.exit(1);
+});
